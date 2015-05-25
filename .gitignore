@@ -1,0 +1,8 @@
+.idea/
+.vagrant/
+profiles/
+vendor/
+composer.lock
+phpunit.xml
+Vagrantfile
+vagrant_bootstrap.sh

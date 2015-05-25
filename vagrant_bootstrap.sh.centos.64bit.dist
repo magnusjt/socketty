@@ -1,0 +1,35 @@
+sudo su
+cd ~
+
+# Set timezone to use here
+ln -sf /usr/share/zoneinfo/Europe/Oslo /etc/localtime
+
+# Download updated yum repositories (epel and remi for php 5.5)
+wget http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
+wget http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
+rpm -Uvh remi-release-6*.rpm epel-release-6*.rpm
+
+# Install php and apache
+yum -y --enablerepo=remi,remi-php55 install httpd php php-pear php-common php-devel php-cli php-pecl-xdebug php-pdo php-opcache php-mbstring php-mcrypt php-xml gcc-c++ openssl-devel
+
+# Enable xdebug in php.ini
+echo "
+[xdebug]
+xdebug.remote_host=10.0.2.2
+xdebug.remote_enable=on
+xdebug.remote_connect_back=off
+xdebug.profiler_enable=off
+xdebug.profiler_output_dir=/vagrant/profiles" >> /etc/php.ini
+
+# Link test/functional/web to web page
+rmdir /var/www/html
+ln -s /vagrant/public /var/www/html
+
+# Disable sendfile, as that doesnt work properly inside vagrant
+sed -i 's/.*#EnableSendfile.*/EnableSendfile off/' /etc/httpd/conf/httpd.conf
+
+# Start services
+service httpd start
+
+# Make sure services start on system startup
+chkconfig httpd on

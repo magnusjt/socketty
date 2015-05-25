@@ -1,0 +1,182 @@
+<html>
+    <head>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+        <script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.3/moment.js"></script>
+        <script src="js/term.js"></script>
+        <script src="js/socketty.js"></script>
+        <style>
+            .terminal {
+                border: #000 solid 5px;
+                font-family: "DejaVu Sans Mono", "Liberation Mono", monospace;
+                font-size: 11px;
+                color: #f0f0f0;
+                background: #000;
+            }
+            .terminal-cursor {
+                color: #000;
+                background: #f0f0f0;
+            }
+            .terminal-wrapper{
+
+            }
+            .terminal-wrapper:focus{
+                border: 100px #0088CC solid;
+
+            }
+            .terminal-row{
+                border-bottom: 1px #aaa solid;
+                padding-top: 20px;
+                padding-bottom: 20px;
+                padding-left: 50px;
+                padding-right: 50px;
+            }
+            body{
+                margin-bottom: 150px;
+            }
+            hr{
+                border-color: #aaa;
+            }
+            .connection-status-disconnected{
+                color: red;
+            }
+            .connection-status-connected{
+                color: green;
+            }
+            #messages{
+                min-height: 100px;
+                font-size: small;
+            }
+        </style>
+    </head>
+    <body>
+    <div class="row" style="border-bottom: 1px #aaa solid;">
+        <div class="col-lg-offset-4 col-lg-3">
+            <h4>Socketty</h4>
+            <p id="connection-status" class="connection-status-disconnected">Disconnected</p>
+            <div class="form-group">
+                <input type="text" id="ip" placeholder="IP address" value="127.0.0.1" class="form-control" />
+            </div>
+            <div class="form-group">
+                <input type="text" id="username" placeholder="Username" value="vagrant" class="form-control" />
+            </div>
+            <div class="form-group">
+                <input type="password" id="password" placeholder="Password" value="vagrant" class="form-control" />
+            </div>
+            <div class="form-group">
+                <button class="btn btn-default" id="spawn">Spawn</button>
+                <img src="ajax-loader.gif" style="display:none;" id="spinner-gif" />
+            </div>
+            <div class="form-group">
+                <label for="messages">Log</label>
+                <textarea id="messages" class="form-control"></textarea>
+            </div>
+        </div>
+    </div>
+    <div id="terminals"></div>
+    <script>
+        $(document).ready(function(){
+            var socketty, options, terminalOptions;
+
+            function findTerminalRowById(id){
+                return $(".terminal-row[data-id=" + id + "]");
+            }
+
+            function createTerminalRow(terminalWrapper){
+                $("#terminals").prepend(
+                        '<div class="row terminal-row" data-id="' + terminalWrapper.id + '">' +
+                            '<div class="col-lg-5">' +
+                                '<div class="terminal-wrapper"></div>' +
+                            '</div>' +
+                            '<div class="col-lg-7">' +
+                                '<h4>' + terminalWrapper.ip + '</h4>' +
+                                '<button class="btn btn-default btn-sm close-button" data-id="' + terminalWrapper.id + '">Close</button>' +
+                                '</div>' +
+                            '</div>'
+                );
+            }
+
+            function printMessage(msg){
+                var time = moment().format('HH:mm:ss');
+                var $element = $("#messages");
+                $element.append(time + ': ' + msg + "\n");
+                $element.scrollTop($element[0].scrollHeight);
+            }
+
+            options = {
+                'url': 'ws://localhost:8080',
+                'debug': true,
+                'onOpen': function(){
+                    $("#connection-status").removeClass('connection-status-disconnected')
+                        .addClass('connection-status-connected')
+                        .html('Connected');
+
+                    printMessage('Connection established');
+                },
+                'onClose': function(reason){
+                    $("#connection-status").removeClass('connection-status-connected')
+                        .addClass('connection-status-disconnected')
+                        .html('Disconnected');
+
+                    printMessage('Connection lost. Reason: ' + reason);
+                },
+                'onError': function(){
+                    printMessage('Connection error');
+                },
+                'onTerminalCreated': function(terminalWrapper){
+                    $("#spinner-gif").hide();
+                    createTerminalRow(terminalWrapper);
+                    var $container = findTerminalRowById(terminalWrapper.id).find('.terminal-wrapper');
+                    terminalWrapper.open($container);
+                    printMessage('Terminal created! (IP: ' + terminalWrapper.ip + ')');
+                },
+                'onTerminalCreateFailure': function(terminalWrapper, msg){
+                    printMessage('Failed to create terminal. Reason: ' + msg + ' (IP: ' + terminalWrapper.ip + ')');
+                },
+                'onTerminalReadFailure': function(terminalWrapper, msg){
+                    printMessage('Failed to read from remote. Reason: ' + msg + ' (IP: ' + terminalWrapper.ip + ')');
+                },
+                'onTerminalWriteFailure': function(terminalWrapper, msg){
+                    printMessage('Failed to write to remote. Reason: ' + msg + ' (IP: ' + terminalWrapper.ip + ')');
+                },
+                'onTerminalClose': function(terminalWrapper, msg){
+                    printMessage('Terminal closed. Note: ' + msg + ' (IP: ' + terminalWrapper.ip + ')');
+                    findTerminalRowById(terminalWrapper.id).remove();
+                }
+            };
+
+            socketty = new Socketty(options);
+            socketty.connect();
+
+            $("#spawn").click(function(e){
+                e.preventDefault();
+
+                if(!socketty.isConnected()){
+                    printMessage('Cannot spawn right now because no connection is available');
+                    return;
+                }
+
+                var ip = $("#ip").val();
+                var username = $("#username").val();
+                var password = $("#password").val();
+
+                terminalOptions = {
+                    cols: 80,
+                    rows: 24,
+                    screenKeys: true,
+                    useStyle: false,
+                    cursorBlink: true
+                };
+
+                socketty.requestCreateTerminal(ip, username, password, terminalOptions);
+            });
+
+            $("#terminals").on('click', '.close-button', function(){
+                var id = $(this).data('id');
+                socketty.requestCloseTerminal(id);
+            });
+        });
+    </script>
+    </body>
+</html>

@@ -1,0 +1,24 @@
+{
+    "name": "magnusjt/socketty",
+    "description": "SSH terminal over web sockets",
+    "keywords": ["ssh web-sockets"],
+    "license": "MIT",
+    "type": "project",
+    "require": {
+        "cboden/ratchet": "*",
+		"psr/log": "1.0.0",
+        "monolog/monolog": "1.10.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "4.2.*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Socketty\\": "src"
+        }
+    },
+    "config": {
+        "preferred-install": "dist"
+    },
+    "minimum-stability": "stable"
+}
