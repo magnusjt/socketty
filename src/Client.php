@@ -143,12 +143,12 @@ class Client{
             'id' => $id
         ));
 
-        // Send initial terminal data
-        $this->sendTerminalUpdate($terminal);
-
         $this->loop->addReadStream($terminal->getStream(), function() use ($terminal){
             $this->sendTerminalUpdate($terminal);
         });
+
+        // Send initial terminal data
+        $this->sendTerminalUpdate($terminal);
     }
 
     /**
