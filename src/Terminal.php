@@ -13,13 +13,11 @@ class Terminal{
         $this->id = $id;
         $this->ip = $ip;
         $this->ssh = new \Net_SSH2($ip);
+        $this->ssh->setTimeout(5);
 
         if(!$this->ssh->login($username, $password)){
             throw new \Exception('Could not login to host');
         }
-
-        // Need a timeout because the read function blocks otherwise
-        $this->ssh->setTimeout(0.1);
     }
 
     public function close(){
@@ -42,10 +40,35 @@ class Terminal{
     }
 
     public function read(){
-        return $this->ssh->read();
+        return $this->readWithoutLocking();
     }
 
     public function write($data){
         $this->ssh->write($data);
+    }
+
+    /**
+     * NB: This is a modified version of Net_SSH::read without the locking (the expect functionality)
+     *     Here we just want to read whatever we can and return.
+     *
+     *
+     * @return bool|string
+     * @throws \Exception
+     */
+    private function readWithoutLocking(){
+        $this->ssh->curTimeout = $this->ssh->timeout;
+        $this->ssh->is_timeout = false;
+
+        if (!($this->ssh->bitmap & NET_SSH2_MASK_LOGIN)) {
+            throw new \Exception('Read not allowed before login');
+        }
+
+        if (!($this->ssh->bitmap & NET_SSH2_MASK_SHELL) && !$this->ssh->_initShell()) {
+            throw new \Exception('Unable to initiate an interactive shell session');
+        }
+
+        $channel = $this->ssh->_get_interactive_channel();
+        $response = $this->ssh->_get_channel_packet($channel);
+        return $response;
     }
 }
