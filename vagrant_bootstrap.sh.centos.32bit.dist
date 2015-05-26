@@ -28,6 +28,19 @@ ln -s /vagrant/public /var/www/html
 # Disable sendfile, as that doesnt work properly inside vagrant
 sed -i 's/.*#EnableSendfile.*/EnableSendfile off/' /etc/httpd/conf/httpd.conf
 
+# Make apache listen to port 8888 instead of port 80
+sed -i 's/Listen 80/Listen 8888/' /etc/httpd/conf/httpd.conf
+
+# Download and install haproxy
+wget http://www.haproxy.org/download/1.5/src/haproxy-1.5.12.tar.gz
+tar -zxvf haproxy-1.5.12.tar.gz
+cd haproxy-1.5.12
+make install
+
+# Copy the haproxy config file and start it
+cp /vagrant/haproxy.cfg /etc/haproxy.cfg
+/usr/local/sbin/haproxy -f /etc/haproxy.cfg -p /var/run/haproxy.pid -D
+
 # Start services
 service httpd start
 
