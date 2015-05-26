@@ -9,3 +9,6 @@ Terminal over websockets using ratchet and phpseclib
 
 * Insert commands into terminal from textarea
 * Send commands to multiple terminals at the same time
+* Authentication via existing session
+* Authorization - is the ip address allowed for this user?
+* SSL web sockets, proxy through apache on port 80?
