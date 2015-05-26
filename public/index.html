@@ -170,11 +170,13 @@
                 };
 
                 socketty.requestCreateTerminal(ip, username, password, terminalOptions);
+                printMessage('Requesting new terminal...');
             });
 
             $("#terminals").on('click', '.close-button', function(){
                 var id = $(this).data('id');
                 socketty.requestCloseTerminal(id);
+                printMessage('Requesting close terminal...');
             });
         });
     </script>
