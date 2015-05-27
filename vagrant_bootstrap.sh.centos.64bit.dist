@@ -9,8 +9,8 @@ wget http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
 wget http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
 rpm -Uvh remi-release-6*.rpm epel-release-6*.rpm
 
-# Install php and apache
-yum -y --enablerepo=remi,remi-php55 install httpd php php-pear php-common php-devel php-cli php-pecl-xdebug php-pdo php-opcache php-mbstring php-mcrypt php-xml gcc-c++ openssl-devel
+# Install php and apache (also with mod_ssl for https support) (gcc-c++ openssl-devel and pcre-devel in order to compile haproxy with ssl support)
+yum -y --enablerepo=remi,remi-php55 install httpd mod_ssl php php-pear php-common php-devel php-cli php-pecl-xdebug php-pdo php-opcache php-mbstring php-mcrypt php-xml gcc-c++ openssl-devel pcre-devel
 
 # Enable xdebug in php.ini
 echo "
@@ -25,21 +25,53 @@ xdebug.profiler_output_dir=/vagrant/profiles" >> /etc/php.ini
 rmdir /var/www/html
 ln -s /vagrant/public /var/www/html
 
+# Generate dummy ssl certificate
+openssl req \
+    -new \
+    -newkey rsa:2048 \
+    -days 1000 \
+    -nodes \
+    -x509 \
+    -subj "/C=EN/ST=Vagrant Province/L=Vagrant City/O=Socketty Corp/CN=localhost" \
+    -keyout /etc/pki/tls/private/dummycert.key \
+    -out /etc/pki/tls/certs/dummycert.crt
+
+# Create a pem format file from the certificate, to be used by haproxy
+cat /etc/pki/tls/certs/dummycert.crt /etc/pki/tls/private/dummycert.key > /etc/pki/tls/private/dummycert.pem
+
 # Disable sendfile, as that doesnt work properly inside vagrant
 sed -i 's/.*#EnableSendfile.*/EnableSendfile off/' /etc/httpd/conf/httpd.conf
 
-# Make apache listen to port 8888 instead of port 80
-sed -i 's/Listen 80/Listen 8888/' /etc/httpd/conf/httpd.conf
+# Make apache listen to port 8880 instead of port 80
+sed -i 's/Listen 80/Listen 8880/' /etc/httpd/conf/httpd.conf
+
+# And make the https port 4443 instead of 443
+sed -i 's/Listen 443/Listen 4443/' /etc/httpd/conf.d/ssl.conf
+sed -i 's/_default_:443/_default_:4443/' /etc/httpd/conf.d/ssl.conf
+
+# Point to the dummy certificate files in apache ssl conf
+sed -i 's/SSLCertificateFile \/etc\/pki\/tls\/certs\/localhost.crt/SSLCertificateFile \/etc\/pki\/tls\/certs\/dummycert.crt/' /etc/httpd/conf.d/ssl.conf
+sed -i 's/SSLCertificateKeyFile \/etc\/pki\/tls\/private\/localhost.key/SSLCertificateKeyFile \/etc\/pki\/tls\/private\/dummycert.key/' /etc/httpd/conf.d/ssl.conf
+
+# Enable UDP syslog for haproxy logging
+sed -i 's/#\$ModLoad imudp/$ModLoad imudp/' /etc/rsyslog.conf
+sed -i 's/#\$UDPServerRun 514/$UDPServerRun 514/' /etc/rsyslog.conf
+echo "\$UDPServerAddress 127.0.0.1" >> /etc/rsyslog.conf
+echo "local2.* /var/log/haproxy.log" > /etc/rsyslog.d/haproxy.conf
+service rsyslog restart
+
 
 # Download and install haproxy
 wget http://www.haproxy.org/download/1.5/src/haproxy-1.5.12.tar.gz
 tar -zxvf haproxy-1.5.12.tar.gz
 cd haproxy-1.5.12
+
+# Enable some extra stuff, most notably SSL. We needed openssl-devel and pcre-devel installed for this.
+make TARGET=linux2628 USE_PCRE=1 USE_OPENSSL=1 USE_ZLIB=1 USE_CRYPT_H=1 USE_LIBCRYPT=1
 make install
 
 # Copy the haproxy config file and start it
-cp /vagrant/haproxy.cfg /etc/haproxy.cfg
-/usr/local/sbin/haproxy -f /etc/haproxy.cfg -p /var/run/haproxy.pid -D
+/usr/local/sbin/haproxy -f /vagrant/haproxy.cfg -p /var/run/haproxy.pid -D
 
 # Start services
 service httpd start
