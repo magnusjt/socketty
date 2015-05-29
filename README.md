@@ -3,6 +3,7 @@ Terminal over websockets using ratchet and phpseclib
 
 * Start virtual server with `vagrant up`
 * Start websocket server with `/vagrant/server.php`
+* Open browser and go to https://localhost:5678/login.php to pretend to login
 * Open browser and go to https://localhost:5678 and spawn some terminals into the virtual server
 
 ### About SSL
