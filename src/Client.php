@@ -4,6 +4,7 @@ namespace Socketty;
 use Psr\Log\LoggerInterface;
 use Ratchet\ConnectionInterface;
 use React\EventLoop\LoopInterface;
+use Symfony\Component\HttpFoundation\Session\Session;
 
 class Client{
     const CREATE_TERMINAL = 1; // From client
@@ -22,6 +23,13 @@ class Client{
 
     const MESSAGE_UNKNOWN = 11; // From server
 
+    const AUTHENTICATE = 12; // From client
+    const AUTHENTICATION_SUCCESS = 13; // From server
+    const AUTHENTICATION_FAILURE = 14; // From server
+
+    const STATE_CONNECTED = 2;
+    const STATE_AUTHENTICATED = 3;
+
     /** @var  LoggerInterface */
     private $logger;
 
@@ -31,43 +39,44 @@ class Client{
     /** @var  LoopInterface */
     private $loop;
 
+    /** @var  Session */
+    private $session;
+
     /** @var Terminal[] */
     private $terminals;
 
-    public function __construct(LoggerInterface $logger, ConnectionInterface $conn, $loop){
+    /** @var  AuthenticatorInterface */
+    private $authenticator;
+
+    /** @var AuthorizerInterface  */
+    private $authorizer;
+
+    /** @var int */
+    private $state = self::STATE_CONNECTED;
+
+    public function __construct(LoggerInterface $logger,
+                                ConnectionInterface $conn,
+                                LoopInterface $loop,
+                                AuthenticatorInterface $authenticator = null,
+                                AuthorizerInterface $authorizer = null){
         $this->logger = $logger;
         $this->conn = $conn;
         $this->loop = $loop;
+        $this->authenticator = $authenticator;
+        $this->authorizer = $authorizer;
         $this->terminals = new \SplObjectStorage();
+
+        if(isset($conn->Session)){
+            $this->session = $conn->Session;
+        }
+    }
+
+    public function getConn(){
+        return $this->conn;
     }
 
     public function getNumberOfTerminals(){
         return $this->terminals->count();
-    }
-
-    /**
-     * Handles incoming socket messages
-     *
-     * @param $type
-     * @param $obj
-     */
-    public function message($type, $obj){
-        switch($type){
-            case self::CREATE_TERMINAL:
-                $this->createTerminal($obj['id'], $obj['ip'], $obj['username'], $obj['password']);
-                break;
-            case self::WRITE_TERMINAL_DATA:
-                $this->writeTerminalData($obj['id'], $obj['d']);
-                break;
-            case self::CLOSE_TERMINAL:
-                $this->closeTerminalById($obj['id']);
-                break;
-            default:
-                $this->send(self::MESSAGE_UNKNOWN, array(
-                    'type' => $type
-                ));
-                break;
-        }
     }
 
     /**
@@ -81,6 +90,53 @@ class Client{
             $terminal = $this->terminals->current();
             $this->terminals->next();
             $this->closeTerminal($terminal);
+        }
+    }
+
+    /**
+     * Handles incoming socket messages
+     *
+     * @param $type
+     * @param $obj
+     */
+    public function handleMessage($type, $obj){
+        switch($this->state){
+            case self::STATE_CONNECTED:
+                $this->handleMessageStateConnected($type, $obj);
+                break;
+            case self::STATE_AUTHENTICATED;
+                $this->handleMessageStateAuthenticated($type, $obj);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private function handleMessageStateConnected($type, $obj){
+        switch($type){
+            case self::AUTHENTICATE:
+                $this->performAuthentication();
+                break;
+            default:
+                $this->send(self::MESSAGE_UNKNOWN, $obj);
+                break;
+        }
+    }
+
+    private function handleMessageStateAuthenticated($type, $obj){
+        switch($type){
+            case self::CREATE_TERMINAL:
+                $this->createTerminal($obj['id'], $obj['ip'], $obj['username'], $obj['password']);
+                break;
+            case self::WRITE_TERMINAL_DATA:
+                $this->writeTerminalData($obj['id'], $obj['d']);
+                break;
+            case self::CLOSE_TERMINAL:
+                $this->closeTerminalById($obj['id']);
+                break;
+            default:
+                $this->send(self::MESSAGE_UNKNOWN, $obj);
+                break;
         }
     }
 
@@ -104,6 +160,21 @@ class Client{
         ));
     }
 
+    private function performAuthentication(){
+        if($this->authenticator === null
+            or $this->authenticator->check($this->session)
+        ){
+            $this->logger->info('Authentication successful');
+            $this->state = self::STATE_AUTHENTICATED;
+            $this->send(self::AUTHENTICATION_SUCCESS);
+            return;
+        }
+
+        $this->logger->info('Authentication failed, closing connection.');
+        $this->send(self::AUTHENTICATION_FAILURE);
+        $this->conn->close();
+    }
+
     /**
      * Create a new terminal and attach it to the loop
      *
@@ -114,6 +185,15 @@ class Client{
      */
     private function createTerminal($id, $ip, $username, $password){
         $this->logger->info('Creating new terminal to IP ' . $ip);
+
+        if($this->authorizer !== null and !$this->authorizer->check($this->session, $ip, $username)){
+            $this->send(self::CREATE_TERMINAL_FAILURE, array(
+                'id' => $id,
+                'msg' => 'Not authorized'
+            ));
+
+            return;
+        }
 
         if(false !== $this->getTerminalById($id)){
             $this->logger->error('Terminal could not be created because the requested id already exists');
@@ -229,16 +309,13 @@ class Client{
      * @param $type
      * @param $obj
      */
-    private function send($type, $obj){
-        $obj['t'] = $type;
-        $this->conn->send(json_encode($obj));
-    }
+    private function send($type, $obj = array()){
+        $message = array(
+            'type' => $type,
+            'value' => $obj
+        );
 
-    /**
-     * @return ConnectionInterface
-     */
-    public function getConn(){
-        return $this->conn;
+        $this->conn->send(json_encode($message));
     }
 
     /**
@@ -247,7 +324,7 @@ class Client{
      * @param $id
      * @return bool|Terminal
      */
-    public function getTerminalById($id){
+    private function getTerminalById($id){
         foreach($this->terminals as $terminal){
             if($terminal->getId() == $id){
                 return $terminal;

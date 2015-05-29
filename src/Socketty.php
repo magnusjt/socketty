@@ -4,22 +4,24 @@ namespace Socketty;
 use \Psr\Log\LoggerInterface;
 use \Ratchet\ConnectionInterface;
 use \Ratchet\MessageComponentInterface;
+use \React\EventLoop\LoopInterface;
 
 class Socketty implements MessageComponentInterface{
     private $logger;
     private $loop;
+    private $authenticator;
+    private $authorizer;
     private $clients;
 
-    public function __construct(LoggerInterface $logger){
+    public function __construct(LoggerInterface $logger,
+                                LoopInterface $loop,
+                                AuthenticatorInterface $authenticator = null,
+                                AuthorizerInterface $authorizer = null){
         $this->logger = $logger;
-        $this->clients = new \SplObjectStorage();
-    }
-
-    /**
-     * @param $loop \React\EventLoop\LoopInterface
-     */
-    public function setLoop($loop){
         $this->loop = $loop;
+        $this->authenticator = $authenticator;
+        $this->authorizer = $authorizer;
+        $this->clients = new \SplObjectStorage();
     }
 
     public function getNumberOfClients(){
@@ -44,6 +46,7 @@ class Socketty implements MessageComponentInterface{
      * @return bool|Client
      */
     public function getClientFromConnection(ConnectionInterface $conn){
+        /** @var Client $client */
         foreach($this->clients as $client){
             if($client->getConn() == $conn){
                 return $client;
@@ -56,7 +59,7 @@ class Socketty implements MessageComponentInterface{
     function onOpen(ConnectionInterface $conn){
         $this->logger->info('Connection established');
 
-        $this->clients->attach(new Client($this->logger, $conn, $this->loop));
+        $this->clients->attach(new Client($this->logger, $conn, $this->loop, $this->authenticator, $this->authorizer));
 
         $this->logStatistics();
     }
@@ -94,7 +97,7 @@ class Socketty implements MessageComponentInterface{
         }
 
         try{
-            $client->message($obj['t'], $obj);
+            $client->handleMessage($obj['type'], $obj['value']);
         }catch(\Exception $e){
             $this->logger->error('Error handling message from client. Closing the connection now.', array('exception' => $e));
             $from->close();

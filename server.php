@@ -1,31 +1,32 @@
 <?php
 require __DIR__ . '/vendor/autoload.php';
+
+use \Ratchet\Session\SessionProvider;
+use \React\EventLoop\Factory as LoopFactory;
+use Socketty\BasicAuthenticator;
+use Socketty\BasicAuthorizer;
+use \Socketty\Socketty;
+use \Socketty\ErrorHandler;
+use \Symfony\Component\HttpFoundation\Session\Storage\Handler\MemcachedSessionHandler;
+
+ErrorHandler::setErrorHandler();
+
 set_include_path(get_include_path() . PATH_SEPARATOR . __DIR__ . '/lib/phpseclib0.3.10');
 date_default_timezone_set('Europe/Oslo');
 
-use \Ratchet\Server\IoServer;
-use Ratchet\Http\HttpServer;
-use Ratchet\WebSocket\WsServer;
-use \Socketty\Socketty;
-
-// Need an error handler because phpseclib uses old-style errors, but socketty uses exceptions
-function error_handler($errno, $errstr, $errfile, $errline){
-    throw new ErrorException($errstr, 0, $errno, $errfile, $errline);
-}
-set_error_handler('error_handler');
+$loop = LoopFactory::create();
+$app = new \Ratchet\App('localhost', 8080, '127.0.0.1', $loop);
 
 $logger = new Monolog\Logger('socketty', array(new \Monolog\Handler\StreamHandler('php://stdout', \Psr\Log\LogLevel::INFO)));
-$socketty = new Socketty($logger);
 
-$server = IoServer::factory(
-    new HttpServer(
-        new WsServer(
-            $socketty
-        )
-    ),
-    8080
-);
+$authenticator = new BasicAuthenticator('username');
+$authorizer = new BasicAuthorizer(array('127.0.0.1'));
+$socketty = new Socketty($logger, $loop, $authenticator, $authorizer);
 
-$socketty->setLoop($server->loop);
+$memcached = new Memcached();
+$memcached->addServer('localhost', 11211);
+$handler = new MemcachedSessionHandler($memcached);
+$sessionProvider = new SessionProvider($socketty, $handler, array('name' => 'CUSTOM_NAME'));
 
-$server->run();
+$app->route('', $sessionProvider);
+$app->run();
