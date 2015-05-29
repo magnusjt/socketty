@@ -48,6 +48,18 @@
                 min-height: 100px;
                 font-size: small;
             }
+            .copy-textarea{
+                font-size: x-small;
+            }
+            .paste-textarea{
+                min-height: 200px;
+                font-size: small;
+            }
+            .terminal-header{
+            }
+            .close-button{
+                float:right;
+            }
         </style>
     </head>
     <body>
@@ -86,14 +98,26 @@
             function createTerminalRow(terminalWrapper){
                 $("#terminals").prepend(
                         '<div class="row terminal-row" data-id="' + terminalWrapper.id + '">' +
-                            '<div class="col-lg-5">' +
-                                '<div class="terminal-wrapper"></div>' +
-                            '</div>' +
                             '<div class="col-lg-7">' +
-                                '<h4>' + terminalWrapper.ip + '</h4>' +
-                                '<button class="btn btn-default btn-sm close-button" data-id="' + terminalWrapper.id + '">Close</button>' +
+                                '<div class="terminal-wrapper"></div>' +
+                                '<button class="btn btn-danger btn-sm close-button" data-id="' + terminalWrapper.id + '">Close terminal</button>' +
+                            '</div>' +
+                            '<div class="col-lg-5">' +
+                                '<h4 class="terminal-header">' + terminalWrapper.ip + '</h4>' +
+                                '<div class="form-group">' +
+                                    '<textarea class="form-control copy-textarea" data-id="' + terminalWrapper.id + '"></textarea>' +
+                                    '<button class="btn btn-default btn-sm copy-button" data-id="' + terminalWrapper.id + '">' +
+                                        '<span class="glyphicon glyphicon-copy"></span> Copy to above' +
+                                    '</button>' +
                                 '</div>' +
-                            '</div>'
+                                '<div class="form-group">' +
+                                    '<textarea class="form-control paste-textarea" data-id="' + terminalWrapper.id + '"></textarea>' +
+                                    '<button class="btn btn-default btn-sm paste-button" data-id="' + terminalWrapper.id + '">' +
+                                        '<span class="glyphicon glyphicon-paste"></span> Paste first line' +
+                                    '</button>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>'
                 );
             }
 
@@ -124,6 +148,9 @@
                 'onError': function(){
                     printMessage('Connection error');
                 },
+                'onAuthFailure': function(){
+                    printMessage('Authentication failed');
+                },
                 'onTerminalCreated': function(terminalWrapper){
                     $("#spinner-gif").hide();
                     createTerminalRow(terminalWrapper);
@@ -147,7 +174,6 @@
             };
 
             socketty = new Socketty(options);
-            socketty.connect();
 
             $("#spawn").click(function(e){
                 e.preventDefault();
@@ -162,14 +188,15 @@
                 var password = $("#password").val();
 
                 terminalOptions = {
-                    cols: 80,
-                    rows: 24,
+                    cols: 120,
+                    rows: 30,
                     screenKeys: true,
                     useStyle: false,
                     cursorBlink: true
                 };
 
-                socketty.requestCreateTerminal(ip, username, password, terminalOptions);
+                var terminalWrapper = socketty.requestCreateTerminal(ip, username, password, terminalOptions);
+                terminalWrapper.setRecord(true);
                 printMessage('Requesting new terminal...');
             });
 
@@ -177,7 +204,32 @@
                 var id = $(this).data('id');
                 socketty.requestCloseTerminal(id);
                 printMessage('Requesting close terminal...');
+            })
+            .on('click', '.copy-button', function(){
+                var id = $(this).data('id');
+                var terminalWrapper = socketty.getTerminalWrapperById(id);
+                var text = terminalWrapper.getRecorded();
+                $(".copy-textarea[data-id=" + id + "]").val(text).select();
+            })
+            .on('click', '.paste-button', function(){
+                var id = $(this).data('id');
+                var terminalWrapper = socketty.getTerminalWrapperById(id);
+                var $textareaElement = $(".paste-textarea[data-id=" + id + "]");
+                var text = $textareaElement.val();
+                var indexOfFirstNewline = text.indexOf("\n");
+                var firstLine;
+                if(indexOfFirstNewline == -1){
+                    firstLine = text + "\n";
+                    text = '';
+                }else{
+                    firstLine = text.substr(0, indexOfFirstNewline+1); // plus 1 to get the newline as well
+                    text = text.substr(indexOfFirstNewline+1);
+                }
+
+                terminalWrapper.paste(firstLine);
+                $textareaElement.val(text);
             });
+
         });
     </script>
     </body>

@@ -15,6 +15,10 @@
 
     const MESSAGE_UNKNOWN = 11; // From server
 
+    const AUTHENTICATE = 12; // From client
+    const AUTHENTICATION_SUCCESS = 13; // From server
+    const AUTHENTICATION_FAILURE = 14; // From server
+
     function TerminalWrapper(id, ip, options){
         this.options = $.extend({}, TerminalWrapper.defaults, options);
 
@@ -22,6 +26,8 @@
         this.id = id;
         this.ip = ip;
         this.isOpen = false;
+        this.isRecording = false;
+        this.recordBuffer = '';
     }
 
     TerminalWrapper.defaults = {
@@ -62,175 +68,35 @@
      * @param data string
      */
     TerminalWrapper.prototype.write = function(data){
+        if(this.isRecording){
+            this.recordBuffer += data;
+        }
+
         this.term.write(data);
     };
 
+    TerminalWrapper.prototype.paste = function(data){
+        this.term.send(data);
+    };
+
+    TerminalWrapper.prototype.setRecord = function(isRecording){
+        this.isRecording = isRecording;
+    };
+
+    TerminalWrapper.prototype.getRecorded = function(){
+        return this.recordBuffer;
+    };
+
     function Socketty(options){
-        this.options = $.extend({}, Socketty.defaults, options);
+        this._options = $.extend({}, Socketty.defaults, options);
+        this._isAuthenticated = false;
+        this._retry = true;
         this._terminalWrappers = {};
+        this._connect();
     }
 
-    Socketty.defaults = {
-        'url': 'ws://localhost:8080',
-        'reconnectTime': 5,
-        'debug': false,
-        'onOpen': function(){},
-        'onClose': function(reason){},
-        'onError': function(){},
-
-        'onTerminalCreated': function(terminalWrapper){},
-        'onTerminalCreateFailure': function(terminalWrapper, msg){},
-        'onTerminalClose': function(terminalWrapper, msg){},
-        'onTerminalReadFailure': function(terminalWrapper, msg){},
-        'onTerminalWriteFailure': function(terminalWrapper, msg){}
-    };
-
-    var uniqueId = 0;
-    Socketty.getUniqueId = function(){
-        uniqueId++;
-        return uniqueId;
-    };
-
-    /**
-     * Connect the web socket
-     */
-    Socketty.prototype.connect = function(){
-        this._conn = new WebSocket(this.options.url);
-        this._setWebSocketListeners();
-    };
-
-    /**
-     * Check if the web socket is currently open
-     *
-     * @returns {boolean}
-     */
-    Socketty.prototype.isConnected = function(){
-        return this._conn.readyState == WebSocket.OPEN;
-    };
-
-    /**
-     * Close the web socket
-     */
-    Socketty.prototype.close = function(){
-        this._conn.close();
-    };
-
-    /**
-     * Listen to the various web socket events
-     */
-    Socketty.prototype._setWebSocketListeners = function(){
-        var that = this;
-
-        this._conn.onopen = function(e){
-            that._log('Connection established');
-            that.options.onOpen();
-        };
-
-        this._conn.onmessage = function(e) {
-            that._log('Msg received: ' + e.data);
-            var data = JSON.parse(e.data);
-            var terminalWrapper = that._terminalWrappers[data.id];
-
-            switch(data.t){
-                case CREATE_TERMINAL_SUCCESS:
-                    that._log('Terminal created');
-                    that.options.onTerminalCreated(terminalWrapper);
-                    break;
-                case CREATE_TERMINAL_FAILURE:
-                    that._log('Terminal create failed: ' + data.msg);
-                    that.options.onTerminalCreateFailure(terminalWrapper, data.msg);
-                    that._closeTerminal(terminalWrapper, 'Closed due to previous error');
-                    break;
-                case READ_TERMINAL_DATA:
-                    terminalWrapper.write(data.d);
-                    break;
-                case READ_TERMINAL_DATA_FAILURE:
-                    that._log('Error reading data from remote: ' + data.msg);
-                    that.options.onTerminalReadFailure(terminalWrapper, data.msg);
-                    break;
-                case WRITE_TERMINAL_DATA_FAILURE:
-                    that._log('Error writing data to remote: ' + data.msg);
-                    that.options.onTerminalWriteFailure(terminalWrapper, data.msg);
-                    break;
-                case CLOSE_TERMINAL_SUCCESS:
-                    that._log('Terminal closed by server');
-                    that._closeTerminal(terminalWrapper, 'Closed by server');
-                    break;
-                case CLOSE_TERMINAL_FAILURE:
-                    that._log('Close terminal failure: ' + data.msg);
-                    that._closeTerminal(terminalWrapper, 'Terminal not properly closed by server - ' + data.msg);
-                    break;
-                case MESSAGE_UNKNOWN:
-                    that._log('Message was unknown to server. Message type: ' + data.type);
-                    that._closeTerminal(terminalWrapper, 'Protocol message was unknown to server');
-                    break;
-            }
-        };
-
-        this._conn.onerror = function(){
-            that._log('Connection error');
-            that.options.onError();
-        };
-
-        this._conn.onclose = function(e) {
-            that._log('Connection closed');
-
-            for(var id in that._terminalWrappers){
-                if(that._terminalWrappers.hasOwnProperty(id)){
-                    that._closeTerminal(that._terminalWrappers[id], 'Terminal closed because connection was lost');
-                }
-            }
-
-            that.options.onClose(e.reason);
-
-            // Retry connection every <options.reconnectTime> seconds
-            setTimeout(function(){
-                that.connect();
-            }, that.options.reconnectTime*1000);
-        };
-    };
-
-    /**
-     * Logs to console if debug is enabled
-     *
-     * @param msg string
-     */
-    Socketty.prototype._log = function(msg){
-        if(this.options.debug){
-            console.log(msg);
-        }
-    };
-
-    /**
-     * Send a message through the web socket
-     * The type is a constant defined in the Socketty class
-     *
-     * @param type int
-     * @param obj object
-     */
-    Socketty.prototype._send = function (type, obj){
-        if(!this.isConnected()){
-            this._log('Cannot send message because the web socket is not connected');
-            return;
-        }
-
-        obj.t = type;
-        var msg = JSON.stringify(obj);
-        this._conn.send(msg);
-        this._log('Msg sent: ' + msg);
-    };
-
-    /**
-     * Close a terminal and notify listeners
-     *
-     * @param terminalWrapper TerminalWrapper
-     * @param msg string
-     */
-    Socketty.prototype._closeTerminal = function(terminalWrapper, msg){
-        this.options.onTerminalClose(terminalWrapper, msg);
-        terminalWrapper.close();
-        delete this._terminalWrappers[terminalWrapper.id];
-
+    Socketty.prototype.getTerminalWrapperById = function(id){
+        return this._terminalWrappers[id];
     };
 
     /**
@@ -240,7 +106,7 @@
      */
     Socketty.prototype.requestCloseTerminal = function (id){
         this._send(CLOSE_TERMINAL, {
-           'id': id
+            'id': id
         });
     };
 
@@ -274,6 +140,197 @@
         });
 
         return terminalWrapper;
+    };
+
+    Socketty.defaults = {
+        'url': 'ws://localhost:8080',
+        'reconnectTime': 5,
+        'debug': false,
+        'onOpen': function(){},
+        'onClose': function(reason){},
+        'onError': function(){},
+        'onAuthFailure': function(){},
+        'onTerminalCreated': function(terminalWrapper){},
+        'onTerminalCreateFailure': function(terminalWrapper, msg){},
+        'onTerminalClose': function(terminalWrapper, msg){},
+        'onTerminalReadFailure': function(terminalWrapper, msg){},
+        'onTerminalWriteFailure': function(terminalWrapper, msg){}
+    };
+
+    var uniqueId = 0;
+    Socketty.getUniqueId = function(){
+        uniqueId++;
+        return uniqueId;
+    };
+
+    /**
+     * Connect the web socket
+     */
+    Socketty.prototype._connect = function(){
+        this._conn = new WebSocket(this._options.url);
+        this._setWebSocketListeners();
+    };
+
+    Socketty.prototype._close = function(){
+        this._conn.close();
+    };
+
+    /**
+     * Check if the web socket is currently open
+     *
+     * @returns {boolean}
+     */
+    Socketty.prototype.isConnected = function(){
+        return this._conn.readyState == WebSocket.OPEN;
+    };
+
+    Socketty.prototype.isAuthenticated = function(){
+        return this._isAuthenticated;
+    };
+
+    /**
+     * Listen to the various web socket events
+     */
+    Socketty.prototype._setWebSocketListeners = function(){
+        var that = this;
+
+        this._conn.onopen = function(e){
+            that._log('Connection established');
+            that._send(AUTHENTICATE);
+            that._options.onOpen();
+        };
+
+        this._conn.onmessage = function(e) {
+            that._log('Msg received: ' + e.data);
+            var data = JSON.parse(e.data);
+            that._handleMessage(data.type, data.value);
+        };
+
+        this._conn.onerror = function(){
+            that._log('Connection error');
+            that._options.onError();
+        };
+
+        this._conn.onclose = function(e) {
+            that._log('Connection closed');
+
+            for(var id in that._terminalWrappers){
+                if(that._terminalWrappers.hasOwnProperty(id)){
+                    that._closeTerminal(that._terminalWrappers[id], 'Terminal closed because connection was lost');
+                }
+            }
+
+            that._options.onClose(e.reason);
+
+            // Retry connection every <options.reconnectTime> seconds
+            if(that._retry){
+                setTimeout(function(){
+                    that._connect();
+                }, that._options.reconnectTime*1000);
+            }
+        };
+    };
+
+    Socketty.prototype._handleMessage = function(type, obj){
+        var terminalWrapper = this._terminalWrappers[obj.id];
+
+        switch(type){
+            case CREATE_TERMINAL_SUCCESS:
+                this._log('Terminal created');
+                this._options.onTerminalCreated(terminalWrapper);
+                break;
+            case CREATE_TERMINAL_FAILURE:
+                this._log('Terminal create failed: ' + obj.msg);
+                this._options.onTerminalCreateFailure(terminalWrapper, obj.msg);
+                this._closeTerminal(terminalWrapper, 'Closed due to previous error');
+                break;
+            case READ_TERMINAL_DATA:
+                terminalWrapper.write(obj.d);
+                break;
+            case READ_TERMINAL_DATA_FAILURE:
+                this._log('Error reading data from remote: ' + obj.msg);
+                this._options.onTerminalReadFailure(terminalWrapper, obj.msg);
+                break;
+            case WRITE_TERMINAL_DATA_FAILURE:
+                this._log('Error writing data to remote: ' + obj.msg);
+                this._options.onTerminalWriteFailure(terminalWrapper, obj.msg);
+                break;
+            case CLOSE_TERMINAL_SUCCESS:
+                this._log('Terminal closed by server');
+                this._closeTerminal(terminalWrapper, 'Closed by server');
+                break;
+            case CLOSE_TERMINAL_FAILURE:
+                this._log('Close terminal failure: ' + obj.msg);
+                this._closeTerminal(terminalWrapper, 'Terminal not properly closed by server - ' + obj.msg);
+                break;
+            case MESSAGE_UNKNOWN:
+                this._log('Message was unknown to server. Message: ' + JSON.stringify(obj));
+                this._closeTerminal(terminalWrapper, 'Protocol message was unknown to server');
+                break;
+            case AUTHENTICATION_FAILURE:
+                this._log('Authentication failure');
+                this._retry = false;
+                this._options.onAuthFailure();
+                this._close();
+                break;
+            case AUTHENTICATION_SUCCESS:
+                this._log('Authentication succeeded');
+                this._isAuthenticated = true;
+                break;
+            default:
+                this._log('Message from server unknown');
+        }
+    };
+
+    /**
+     * Logs to console if debug is enabled
+     *
+     * @param msg string
+     */
+    Socketty.prototype._log = function(msg){
+        if(this._options.debug){
+            console.log(msg);
+        }
+    };
+
+    /**
+     * Send a message through the web socket
+     * The type is a constant defined in the Socketty class
+     *
+     * @param type int
+     * @param obj object
+     */
+    Socketty.prototype._send = function (type, obj){
+        if(obj === undefined){
+            obj = {};
+        }
+
+        if(!this.isConnected()){
+            this._log('Cannot send message because the web socket is not connected');
+            return;
+        }
+
+        var message = {
+            'type': type,
+            'value': obj
+        };
+
+        var msg = JSON.stringify(message);
+        this._conn.send(msg);
+        this._log('Msg sent: ' + msg);
+    };
+
+    /**
+     * Close a terminal and notify listeners
+     *
+     * @param terminalWrapper TerminalWrapper
+     * @param msg string
+     */
+    Socketty.prototype._closeTerminal = function(terminalWrapper, msg){
+        this._options.onTerminalClose(terminalWrapper, msg);
+        terminalWrapper.close();
+        delete this._terminalWrappers[terminalWrapper.id];
+
     };
 
     this.Socketty = Socketty;
