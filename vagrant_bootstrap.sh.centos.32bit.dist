@@ -73,8 +73,23 @@ make install
 # Copy the haproxy config file and start it
 /usr/local/sbin/haproxy -f /vagrant/haproxy.cfg -p /var/run/haproxy.pid -D
 
+# Install memcached
+yum -y install memcached
+
+echo 'PORT="11211"
+USER="memcached"
+MAXCONN="1024"
+CACHESIZE="64"
+OPTIONS="-l 127.0.0.1"' > /etc/sysconfig/memcached
+
+# Install memcached for php (and some required libraries)
+yum -y --enablerepo=remi,remi-php55 install zlib-devel libmemcached-devel php-pecl-memcached
+pecl install memcached
+
 # Start services
 service httpd start
+service memcached start
 
 # Make sure services start on system startup
 chkconfig httpd on
+chkconfig memcached on
