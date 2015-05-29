@@ -10,7 +10,4 @@ In order to have secure web sockets, the vagrant install includes haproxy which 
 
 ### TODO
 
-* Insert commands into terminal from textarea
 * Send commands to multiple terminals at the same time
-* Authentication via existing session
-* Authorization - is the ip address allowed for this user?
