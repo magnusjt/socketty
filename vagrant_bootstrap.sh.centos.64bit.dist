@@ -23,7 +23,7 @@ xdebug.profiler_output_dir=/vagrant/profiles" >> /etc/php.ini
 
 # Link test/functional/web to web page
 rmdir /var/www/html
-ln -s /vagrant/public /var/www/html
+ln -s /vagrant/client /var/www/html
 
 # Generate dummy ssl certificate
 openssl req \
