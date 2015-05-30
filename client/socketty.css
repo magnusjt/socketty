@@ -1,0 +1,53 @@
+.terminal {
+    border: #000 solid 5px;
+    font-family: "DejaVu Sans Mono", "Liberation Mono", monospace;
+    font-size: 11px;
+    color: #f0f0f0;
+    background: #000;
+}
+.terminal-cursor {
+    color: #000;
+    background: #f0f0f0;
+}
+.terminal-wrapper{
+
+}
+.terminal-wrapper:focus{
+    border: 100px #0088CC solid;
+
+}
+.terminal-row{
+    border-bottom: 1px #aaa solid;
+    padding-top: 20px;
+    padding-bottom: 20px;
+    padding-left: 50px;
+    padding-right: 50px;
+}
+body{
+    margin-bottom: 150px;
+}
+hr{
+    border-color: #aaa;
+}
+.connection-status-disconnected{
+    color: red;
+}
+.connection-status-connected{
+    color: green;
+}
+#messages{
+    min-height: 100px;
+    font-size: small;
+}
+.copy-textarea{
+    font-size: x-small;
+}
+.paste-textarea{
+    min-height: 200px;
+    font-size: small;
+}
+.terminal-header{
+}
+.close-button{
+    float:right;
+}

@@ -1,4 +1,4 @@
-;(function(){
+;(function($){
     const CREATE_TERMINAL = 1; // From client
     const CREATE_TERMINAL_SUCCESS = 2; // From server
     const CREATE_TERMINAL_FAILURE = 3; // From server
@@ -19,84 +19,38 @@
     const AUTHENTICATION_SUCCESS = 13; // From server
     const AUTHENTICATION_FAILURE = 14; // From server
 
-    function TerminalWrapper(id, ip, options){
-        this.options = $.extend({}, TerminalWrapper.defaults, options);
-
-        this.term = new Terminal(options);
-        this.id = id;
-        this.ip = ip;
-        this.isOpen = false;
-        this.isRecording = false;
-        this.recordBuffer = '';
-    }
-
-    TerminalWrapper.defaults = {
-        cols: 80,
-        rows: 24,
-        screenKeys: true,
-        useStyle: false,
-        cursorBlink: true,
-        debug: false
-    };
-
-    /**
-     * Destroy the current terminal element
-     */
-    TerminalWrapper.prototype.close = function(){
-        // NB: This also removes the DOM element,
-        // and fails if it's already removed.
-        if(this.isOpen){
-            this.term.destroy();
-        }
-
-        this.isOpen = false;
-    };
-
-    /**
-     * Open the terminal in the given jquery element (opens only one terminal)
-     *
-     * @param $container JQuery
-     */
-    TerminalWrapper.prototype.open = function($container){
-        this.term.open($container[0]);
-        this.isOpen = true;
-    };
-
-    /**
-     * Writes data into the terminal element
-     *
-     * @param data string
-     */
-    TerminalWrapper.prototype.write = function(data){
-        if(this.isRecording){
-            this.recordBuffer += data;
-        }
-
-        this.term.write(data);
-    };
-
-    TerminalWrapper.prototype.paste = function(data){
-        this.term.send(data);
-    };
-
-    TerminalWrapper.prototype.setRecord = function(isRecording){
-        this.isRecording = isRecording;
-    };
-
-    TerminalWrapper.prototype.getRecorded = function(){
-        return this.recordBuffer;
-    };
-
-    function Socketty(options){
-        this._options = $.extend({}, Socketty.defaults, options);
+    function SockettyClient(options){
+        this._options = $.extend({}, SockettyClient.defaults, options);
         this._isAuthenticated = false;
         this._retry = true;
-        this._terminalWrappers = {};
+        this._terminals = {};
         this._connect();
     }
 
-    Socketty.prototype.getTerminalWrapperById = function(id){
-        return this._terminalWrappers[id];
+    SockettyClient.defaults = {
+        'url': 'wss://localhost:443',
+        'reconnectTime': 5,
+        'debug': false,
+        'onOpen': function(){},
+        'onClose': function(){},
+        'onError': function(){},
+        'onAuthFailure': function(){},
+        'onAuthSuccess': function(){},
+        'onTerminalCreated': function(terminalWrapper){},
+        'onTerminalCreateFailure': function(terminalWrapper, msg){},
+        'onTerminalClose': function(terminalWrapper, msg){},
+        'onTerminalReadFailure': function(terminalWrapper, msg){},
+        'onTerminalWriteFailure': function(terminalWrapper, msg){}
+    };
+
+    var uniqueId = 0;
+    SockettyClient.getUniqueId = function(){
+        uniqueId++;
+        return uniqueId;
+    };
+
+    SockettyClient.prototype.getTerminalById = function(id){
+        return this._terminals[id];
     };
 
     /**
@@ -104,7 +58,7 @@
      *
      * @param id int
      */
-    Socketty.prototype.requestCloseTerminal = function (id){
+    SockettyClient.prototype.requestCloseTerminal = function (id){
         this._send(CLOSE_TERMINAL, {
             'id': id
         });
@@ -117,13 +71,13 @@
      * @param username string
      * @param password string
      * @param terminalOptions object Options for the term.js library
-     * @returns {TerminalWrapper}
+     * @returns {SockettyTerminal}
      */
-    Socketty.prototype.requestCreateTerminal = function(ip, username, password, terminalOptions){
+    SockettyClient.prototype.requestCreateTerminal = function(ip, username, password, terminalOptions){
         var that = this;
-        var id = Socketty.getUniqueId();
-        var terminalWrapper = new TerminalWrapper(id, ip, terminalOptions);
-        this._terminalWrappers[id] = terminalWrapper;
+        var id = SockettyClient.getUniqueId();
+        var terminalWrapper = new SockettyTerminal(id, ip, terminalOptions);
+        this._terminals[id] = terminalWrapper;
 
         terminalWrapper.term.on('data', function(data){
             that._send(WRITE_TERMINAL_DATA, {
@@ -142,36 +96,15 @@
         return terminalWrapper;
     };
 
-    Socketty.defaults = {
-        'url': 'ws://localhost:8080',
-        'reconnectTime': 5,
-        'debug': false,
-        'onOpen': function(){},
-        'onClose': function(reason){},
-        'onError': function(){},
-        'onAuthFailure': function(){},
-        'onTerminalCreated': function(terminalWrapper){},
-        'onTerminalCreateFailure': function(terminalWrapper, msg){},
-        'onTerminalClose': function(terminalWrapper, msg){},
-        'onTerminalReadFailure': function(terminalWrapper, msg){},
-        'onTerminalWriteFailure': function(terminalWrapper, msg){}
-    };
-
-    var uniqueId = 0;
-    Socketty.getUniqueId = function(){
-        uniqueId++;
-        return uniqueId;
-    };
-
     /**
      * Connect the web socket
      */
-    Socketty.prototype._connect = function(){
+    SockettyClient.prototype._connect = function(){
         this._conn = new WebSocket(this._options.url);
         this._setWebSocketListeners();
     };
 
-    Socketty.prototype._close = function(){
+    SockettyClient.prototype._close = function(){
         this._conn.close();
     };
 
@@ -180,18 +113,18 @@
      *
      * @returns {boolean}
      */
-    Socketty.prototype.isConnected = function(){
+    SockettyClient.prototype.isConnected = function(){
         return this._conn.readyState == WebSocket.OPEN;
     };
 
-    Socketty.prototype.isAuthenticated = function(){
+    SockettyClient.prototype.isAuthenticated = function(){
         return this._isAuthenticated;
     };
 
     /**
      * Listen to the various web socket events
      */
-    Socketty.prototype._setWebSocketListeners = function(){
+    SockettyClient.prototype._setWebSocketListeners = function(){
         var that = this;
 
         this._conn.onopen = function(e){
@@ -214,13 +147,13 @@
         this._conn.onclose = function(e) {
             that._log('Connection closed');
 
-            for(var id in that._terminalWrappers){
-                if(that._terminalWrappers.hasOwnProperty(id)){
-                    that._closeTerminal(that._terminalWrappers[id], 'Terminal closed because connection was lost');
+            for(var id in that._terminals){
+                if(that._terminals.hasOwnProperty(id)){
+                    that._closeTerminal(that._terminals[id], 'Terminal closed because connection was lost');
                 }
             }
 
-            that._options.onClose(e.reason);
+            that._options.onClose();
 
             // Retry connection every <options.reconnectTime> seconds
             if(that._retry){
@@ -231,8 +164,8 @@
         };
     };
 
-    Socketty.prototype._handleMessage = function(type, obj){
-        var terminalWrapper = this._terminalWrappers[obj.id];
+    SockettyClient.prototype._handleMessage = function(type, obj){
+        var terminalWrapper = this._terminals[obj.id];
 
         switch(type){
             case CREATE_TERMINAL_SUCCESS:
@@ -276,6 +209,7 @@
             case AUTHENTICATION_SUCCESS:
                 this._log('Authentication succeeded');
                 this._isAuthenticated = true;
+                this._options.onAuthSuccess();
                 break;
             default:
                 this._log('Message from server unknown');
@@ -287,7 +221,7 @@
      *
      * @param msg string
      */
-    Socketty.prototype._log = function(msg){
+    SockettyClient.prototype._log = function(msg){
         if(this._options.debug){
             console.log(msg);
         }
@@ -295,12 +229,12 @@
 
     /**
      * Send a message through the web socket
-     * The type is a constant defined in the Socketty class
+     * The type is a constant defined in the SockettyClient class
      *
      * @param type int
      * @param obj object
      */
-    Socketty.prototype._send = function (type, obj){
+    SockettyClient.prototype._send = function (type, obj){
         if(obj === undefined){
             obj = {};
         }
@@ -323,15 +257,15 @@
     /**
      * Close a terminal and notify listeners
      *
-     * @param terminalWrapper TerminalWrapper
+     * @param terminalWrapper SockettyTerminal
      * @param msg string
      */
-    Socketty.prototype._closeTerminal = function(terminalWrapper, msg){
+    SockettyClient.prototype._closeTerminal = function(terminalWrapper, msg){
         this._options.onTerminalClose(terminalWrapper, msg);
         terminalWrapper.close();
-        delete this._terminalWrappers[terminalWrapper.id];
+        delete this._terminals[terminalWrapper.id];
 
     };
 
-    this.Socketty = Socketty;
-})();
+    this.SockettyClient = SockettyClient;
+})(jQuery);

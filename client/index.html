@@ -1,66 +1,13 @@
 <html>
     <head>
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+        <link rel="stylesheet" href="socketty.css">
         <script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.3/moment.js"></script>
-        <script src="js/term.js"></script>
-        <script src="js/socketty.js"></script>
-        <style>
-            .terminal {
-                border: #000 solid 5px;
-                font-family: "DejaVu Sans Mono", "Liberation Mono", monospace;
-                font-size: 11px;
-                color: #f0f0f0;
-                background: #000;
-            }
-            .terminal-cursor {
-                color: #000;
-                background: #f0f0f0;
-            }
-            .terminal-wrapper{
-
-            }
-            .terminal-wrapper:focus{
-                border: 100px #0088CC solid;
-
-            }
-            .terminal-row{
-                border-bottom: 1px #aaa solid;
-                padding-top: 20px;
-                padding-bottom: 20px;
-                padding-left: 50px;
-                padding-right: 50px;
-            }
-            body{
-                margin-bottom: 150px;
-            }
-            hr{
-                border-color: #aaa;
-            }
-            .connection-status-disconnected{
-                color: red;
-            }
-            .connection-status-connected{
-                color: green;
-            }
-            #messages{
-                min-height: 100px;
-                font-size: small;
-            }
-            .copy-textarea{
-                font-size: x-small;
-            }
-            .paste-textarea{
-                min-height: 200px;
-                font-size: small;
-            }
-            .terminal-header{
-            }
-            .close-button{
-                float:right;
-            }
-        </style>
+        <script src="term.js"></script>
+        <script src="terminal.js"></script>
+        <script src="client.js"></script>
     </head>
     <body>
     <div class="row" style="border-bottom: 1px #aaa solid;">
@@ -95,24 +42,24 @@
                 return $(".terminal-row[data-id=" + id + "]");
             }
 
-            function createTerminalRow(terminalWrapper){
+            function createTerminalRow(terminal){
                 $("#terminals").prepend(
-                        '<div class="row terminal-row" data-id="' + terminalWrapper.id + '">' +
+                        '<div class="row terminal-row" data-id="' + terminal.id + '">' +
                             '<div class="col-lg-7">' +
                                 '<div class="terminal-wrapper"></div>' +
-                                '<button class="btn btn-danger btn-sm close-button" data-id="' + terminalWrapper.id + '">Close terminal</button>' +
+                                '<button class="btn btn-danger btn-sm close-button" data-id="' + terminal.id + '">Close terminal</button>' +
                             '</div>' +
                             '<div class="col-lg-5">' +
-                                '<h4 class="terminal-header">' + terminalWrapper.ip + '</h4>' +
+                                '<h4 class="terminal-header">' + terminal.ip + '</h4>' +
                                 '<div class="form-group">' +
-                                    '<textarea class="form-control copy-textarea" data-id="' + terminalWrapper.id + '"></textarea>' +
-                                    '<button class="btn btn-default btn-sm copy-button" data-id="' + terminalWrapper.id + '">' +
+                                    '<textarea class="form-control copy-textarea" data-id="' + terminal.id + '"></textarea>' +
+                                    '<button class="btn btn-default btn-sm copy-button" data-id="' + terminal.id + '">' +
                                         '<span class="glyphicon glyphicon-copy"></span> Copy to above' +
                                     '</button>' +
                                 '</div>' +
                                 '<div class="form-group">' +
-                                    '<textarea class="form-control paste-textarea" data-id="' + terminalWrapper.id + '"></textarea>' +
-                                    '<button class="btn btn-default btn-sm paste-button" data-id="' + terminalWrapper.id + '">' +
+                                    '<textarea class="form-control paste-textarea" data-id="' + terminal.id + '"></textarea>' +
+                                    '<button class="btn btn-default btn-sm paste-button" data-id="' + terminal.id + '">' +
                                         '<span class="glyphicon glyphicon-paste"></span> Paste first line' +
                                     '</button>' +
                                 '</div>' +
@@ -138,12 +85,12 @@
 
                     printMessage('Connection established');
                 },
-                'onClose': function(reason){
+                'onClose': function(){
                     $("#connection-status").removeClass('connection-status-connected')
                         .addClass('connection-status-disconnected')
                         .html('Disconnected');
 
-                    printMessage('Connection lost. Reason: ' + reason);
+                    printMessage('Connection lost');
                 },
                 'onError': function(){
                     printMessage('Connection error');
@@ -151,29 +98,32 @@
                 'onAuthFailure': function(){
                     printMessage('Authentication failed');
                 },
-                'onTerminalCreated': function(terminalWrapper){
+                'onAuthSuccess': function(){
+                    printMessage('Authentication successful');
+                },
+                'onTerminalCreated': function(terminal){
                     $("#spinner-gif").hide();
-                    createTerminalRow(terminalWrapper);
-                    var $container = findTerminalRowById(terminalWrapper.id).find('.terminal-wrapper');
-                    terminalWrapper.open($container);
-                    printMessage('Terminal created! (IP: ' + terminalWrapper.ip + ')');
+                    createTerminalRow(terminal);
+                    var $container = findTerminalRowById(terminal.id).find('.terminal-wrapper');
+                    terminal.open($container);
+                    printMessage('Terminal created! (IP: ' + terminal.ip + ')');
                 },
-                'onTerminalCreateFailure': function(terminalWrapper, msg){
-                    printMessage('Failed to create terminal. Reason: ' + msg + ' (IP: ' + terminalWrapper.ip + ')');
+                'onTerminalCreateFailure': function(terminal, msg){
+                    printMessage('Failed to create terminal. Reason: ' + msg + ' (IP: ' + terminal.ip + ')');
                 },
-                'onTerminalReadFailure': function(terminalWrapper, msg){
-                    printMessage('Failed to read from remote. Reason: ' + msg + ' (IP: ' + terminalWrapper.ip + ')');
+                'onTerminalReadFailure': function(terminal, msg){
+                    printMessage('Failed to read from remote. Reason: ' + msg + ' (IP: ' + terminal.ip + ')');
                 },
-                'onTerminalWriteFailure': function(terminalWrapper, msg){
-                    printMessage('Failed to write to remote. Reason: ' + msg + ' (IP: ' + terminalWrapper.ip + ')');
+                'onTerminalWriteFailure': function(terminal, msg){
+                    printMessage('Failed to write to remote. Reason: ' + msg + ' (IP: ' + terminal.ip + ')');
                 },
-                'onTerminalClose': function(terminalWrapper, msg){
-                    printMessage('Terminal closed. Note: ' + msg + ' (IP: ' + terminalWrapper.ip + ')');
-                    findTerminalRowById(terminalWrapper.id).remove();
+                'onTerminalClose': function(terminal, msg){
+                    printMessage('Terminal closed. Note: ' + msg + ' (IP: ' + terminal.ip + ')');
+                    findTerminalRowById(terminal.id).remove();
                 }
             };
 
-            socketty = new Socketty(options);
+            socketty = new SockettyClient(options);
 
             $("#spawn").click(function(e){
                 e.preventDefault();
@@ -195,8 +145,8 @@
                     cursorBlink: true
                 };
 
-                var terminalWrapper = socketty.requestCreateTerminal(ip, username, password, terminalOptions);
-                terminalWrapper.setRecord(true);
+                var terminal = socketty.requestCreateTerminal(ip, username, password, terminalOptions);
+                terminal.setRecord(true);
                 printMessage('Requesting new terminal...');
             });
 
@@ -207,13 +157,13 @@
             })
             .on('click', '.copy-button', function(){
                 var id = $(this).data('id');
-                var terminalWrapper = socketty.getTerminalWrapperById(id);
-                var text = terminalWrapper.getRecorded();
+                var terminal = socketty.getTerminalById(id);
+                var text = terminal.getRecorded();
                 $(".copy-textarea[data-id=" + id + "]").val(text).select();
             })
             .on('click', '.paste-button', function(){
                 var id = $(this).data('id');
-                var terminalWrapper = socketty.getTerminalWrapperById(id);
+                var terminal = socketty.getTerminalById(id);
                 var $textareaElement = $(".paste-textarea[data-id=" + id + "]");
                 var text = $textareaElement.val();
                 var indexOfFirstNewline = text.indexOf("\n");
@@ -226,7 +176,7 @@
                     text = text.substr(indexOfFirstNewline+1);
                 }
 
-                terminalWrapper.paste(firstLine);
+                terminal.paste(firstLine);
                 $textareaElement.val(text);
             });
 
