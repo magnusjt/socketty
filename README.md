@@ -1,5 +1,5 @@
 # socketty
-Terminal over websockets using ratchet and phpseclib
+Terminal over websockets using ratchet, phpseclib, and term.js
 
 * Start virtual server with `vagrant up`
 * Start websocket server with `/vagrant/server.php`
