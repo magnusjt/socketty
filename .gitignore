@@ -2,6 +2,7 @@
 .vagrant/
 profiles/
 vendor/
+node_modules/
 composer.lock
 phpunit.xml
 Vagrantfile
