@@ -1,0 +1,257 @@
+<dom-module id="socketty-client">
+    <style>
+        #messages{
+            min-height: 100px;
+            font-size: small;
+        }
+    </style>
+    <template>
+        <div class="row" style="border-bottom: 1px #aaa solid;">
+            <div class="col-lg-offset-4 col-lg-3">
+                <h4>Socketty</h4>
+                <socketty-status id="status"></socketty-status>
+                <div class="form-group">
+                    <input type="text" id="ip" placeholder="IP address" value="127.0.0.1" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <input type="text" id="username" placeholder="Username" value="vagrant" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <input type="password" id="password" placeholder="Password" value="vagrant" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <button class="btn btn-default" id="spawn">Spawn</button>
+                </div>
+                <div class="form-group">
+                    <label for="messages">Log</label>
+                    <textarea id="messages" class="form-control"></textarea>
+                </div>
+            </div>
+        </div>
+        <div id="terminals"></div>
+    </template>
+</dom-module>
+<script>
+    (function () {
+        const CREATE_TERMINAL = 1; // From client
+        const CREATE_TERMINAL_SUCCESS = 2; // From server
+        const CREATE_TERMINAL_FAILURE = 3; // From server
+
+        const READ_TERMINAL_DATA = 4; // From server
+        const READ_TERMINAL_DATA_FAILURE = 5; // From server
+
+        const WRITE_TERMINAL_DATA = 6; // From client
+        const WRITE_TERMINAL_DATA_FAILURE = 7; // From server
+
+        const CLOSE_TERMINAL = 8; // From client
+        const CLOSE_TERMINAL_SUCCESS = 9; // From server
+        const CLOSE_TERMINAL_FAILURE = 10; // From server
+
+        const MESSAGE_UNKNOWN = 11; // From server
+
+        const AUTHENTICATE = 12; // From client
+        const AUTHENTICATION_SUCCESS = 13; // From server
+        const AUTHENTICATION_FAILURE = 14; // From server
+
+        var uniqueId = 0;
+        this.SockettyClient = Polymer({
+            is: 'socketty-client',
+            properties: {
+                url:       {type: String, value: 'wss://localhost:443'},
+                retry:     {type: Boolean, value: true},
+                retryTime: {type: Number, value: 5},
+                debug:     {type: Boolean, value: false}
+            },
+            created: function(){
+                this._isAuthenticated = false;
+                this._isConnected = false;
+                this._terminals = {};
+            },
+            ready: function() {
+                var that = this;
+
+                this._connect();
+
+                this.querySelector('#spawn').onclick = function(){
+                    that._createTerminal(
+                        that.querySelector('#ip').value,
+                        that.querySelector('#username').value,
+                        that.querySelector('#password').value
+                    );
+                };
+            },
+            attached: function(){
+
+            },
+            detached: function(){
+                // Maybe close here?
+            },
+            _generateUniqueId: function(){
+                uniqueId++;
+                return uniqueId;
+            },
+            _log: function(msg){
+                if(this.debug){
+                    console.log(msg);
+                }
+            },
+            _printMessage: function(msg){
+                var time = moment().format('HH:mm:ss');
+                var element = this.querySelector('#messages');
+                element.value += time + ': ' + msg + "\n";
+                element.scrollTop = element.scrollHeight;
+            },
+            _send: function (type, value){
+                if(value === undefined){
+                    value = {};
+                }
+
+                if(!this._isConnected){
+                    this._log('Cannot send message because the web socket is not connected');
+                    return;
+                }
+
+                var message = {
+                    'type': type,
+                    'value': value
+                };
+
+                var msg = JSON.stringify(message);
+                this._conn.send(msg);
+                this._log('Msg sent: ' + msg);
+            },
+            _connect: function(){
+                this._conn = new WebSocket(this.url);
+                this._setWebSocketListeners();
+            },
+            _setWebSocketListeners: function(){
+                var that = this;
+
+                this._conn.onopen = function(e){
+                    that._log('Connection established');
+                    that._printMessage('Connection established');
+                    that.querySelector('#status').connected = true;
+                    that._isConnected = true;
+                    that._send(AUTHENTICATE);
+                };
+
+                this._conn.onmessage = function(e) {
+                    that._log('Msg received: ' + e.data);
+                    var data = JSON.parse(e.data);
+                    that._handleMessage(data.type, data.value);
+                };
+
+                this._conn.onerror = function(){
+                    that._log('Connection error');
+                    that._printMessage('Connection error');
+                };
+
+                this._conn.onclose = function(e) {
+                    that._log('Connection closed');
+                    that._printMessage('Connection lost');
+                    that.querySelector('#status').connected = false;
+                    that._isConnected = false;
+
+                    for(var id in that._terminals){
+                        if(that._terminals.hasOwnProperty(id)){
+                            that._removeTerminal(that._terminals[id], id);
+                        }
+                    }
+
+                    if(that.retry){
+                        setTimeout(function(){
+                            that._connect();
+                        }, that.retryTime*1000);
+                    }
+                };
+            },
+            _handleMessage: function(type, value){
+                var terminal;
+                if(value.id !== undefined){
+                    terminal = this._terminals[value.id];
+                }
+
+                switch(type){
+                    case CREATE_TERMINAL_SUCCESS:
+                        this._printMessage('Terminal created');
+                        terminal.openTerminal();
+                        break;
+                    case CREATE_TERMINAL_FAILURE:
+                        this._printMessage('Failed to create terminal: ' + value.msg);
+                        this._removeTerminal(terminal, value.id);
+                        break;
+                    case READ_TERMINAL_DATA:
+                        terminal.write(value.d);
+                        break;
+                    case READ_TERMINAL_DATA_FAILURE:
+                        terminal.handleReadFailure(value.msg);
+                        break;
+                    case WRITE_TERMINAL_DATA_FAILURE:
+                        terminal.handleWriteFailure(value.msg);
+                        break;
+                    case CLOSE_TERMINAL_SUCCESS:
+                        this._printMessage('Terminal closed');
+                        break;
+                    case CLOSE_TERMINAL_FAILURE:
+                        this._printMessage('Could not close terminal properly: ' + value.msg);
+                        break;
+                    case MESSAGE_UNKNOWN:
+                        this._log('Message was unknown to server. Message: ' + JSON.stringify(value));
+                        break;
+                    case AUTHENTICATION_FAILURE:
+                        this._log('Authentication failure');
+                        this._printMessage('Authentication failed');
+                        this.retry = false;
+                        this._isAuthenticated = false;
+                        this._conn.close();
+                        break;
+                    case AUTHENTICATION_SUCCESS:
+                        this._log('Authentication succeeded');
+                        this._printMessage('Authentication succeeded');
+                        this._isAuthenticated = true;
+                        break;
+                    default:
+                        this._log('Message from server unknown');
+                }
+            },
+            _createTerminal: function(ip, username, password){
+                this._printMessage('Creating new terminal...');
+
+                var that = this;
+                var id = this._generateUniqueId();
+                var terminal = new SockettyTerminal();
+                terminal.header = ip;
+                this._terminals[id] = terminal;
+
+                terminal.ondata = function(data){
+                    that._send(WRITE_TERMINAL_DATA, {
+                        'id': id,
+                        'd': data
+                    });
+                };
+
+                // Event fired when user closes terminal. Notify server and remove the terminal.
+                terminal.addEventListener('closed', function(){
+                    that._send(CLOSE_TERMINAL, {
+                        'id': id
+                    });
+                    that._removeTerminal(terminal, id);
+                });
+
+                this._send(CREATE_TERMINAL, {
+                    'id': id,
+                    'ip': ip,
+                    'username': username,
+                    'password': password
+                });
+
+                var terminalsElement = this.querySelector('#terminals');
+                terminalsElement.insertBefore(terminal, terminalsElement.firstChild);
+            },
+            _removeTerminal: function(terminal, id){
+                this.querySelector('#terminals').removeChild(terminal);
+                delete this._terminals[id];
+            }
+        });
+    })();
+</script>

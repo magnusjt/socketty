@@ -1,0 +1,150 @@
+<dom-module id="socketty-terminal">
+    <style>
+        .terminal-row {
+            border-bottom: 1px #aaa solid;
+            padding: 20px 50px;
+        }
+        .copy-textarea{
+            font-size: x-small;
+        }
+        .paste-textarea{
+            min-height: 200px;
+            font-size: small;
+        }
+        .terminal-header{
+
+        }
+        .close-button{
+            float:right;
+        }
+        .paper-progress{
+            width: 100%;
+        }
+        .terminal {
+            border: #000 solid 5px;
+            font-family: "DejaVu Sans Mono", "Liberation Mono", monospace;
+            font-size: 11px;
+            color: #f0f0f0;
+            background: #000;
+        }
+        .terminal-cursor {
+            color: #000;
+            background: #f0f0f0;
+        }
+    </style>
+    <template>
+        <div class="row terminal-row">
+            <div class="col-lg-7">
+                <div class="terminal-wrapper"></div>
+                <button class="btn btn-danger btn-sm close-button">Close terminal</button>
+                <paper-progress indeterminate class="paper-progress"></paper-progress>
+            </div>
+            <div class="col-lg-5">
+                <h4 class="terminal-header">{{ header }}</h4>
+                <div class="form-group">
+                    <textarea class="form-control copy-textarea"></textarea>
+                    <button class="btn btn-default btn-sm copy-button">
+                        <span class="glyphicon glyphicon-copy"></span> Copy to above
+                    </button>
+                </div>
+                <div class="form-group">
+                    <textarea class="form-control paste-textarea"></textarea>
+                    <button class="btn btn-default btn-sm paste-button">
+                        <span class="glyphicon glyphicon-paste"></span> Paste first line
+                    </button>
+                </div>
+                <p id="errors" style="color:red;"></p>
+            </div>
+        </div>
+    </template>
+</dom-module>
+<script>
+    (function () {
+        this.SockettyTerminal = Polymer({
+            is: 'socketty-terminal',
+            properties: {
+                cols:        {type: Number, value: 120},
+                rows:        {type: Number, value: 30},
+                screenKeys:  {type: Boolean, value: true},
+                useStyle:    {type: Boolean, value: false},
+                cursorBlink: {type: Boolean, value: false},
+                debug:       {type: Boolean, value: false},
+                isRecording: {type: Boolean, value: true},
+                header:      {type: String, value: 'Terminal'}
+            },
+            ready: function() {
+                var that = this;
+
+                this.recordBuffer = '';
+                this.terminal = new Terminal({
+                    cols:        this.cols,
+                    rows:        this.rows,
+                    screenKeys:  this.screenKeys,
+                    cursorBlink: this.cursorBlink,
+                    debug:       this.debug
+                });
+
+                this.terminal.on('data', function(data){
+                    that.ondata(data);
+                });
+                this.querySelector('.copy-button').onclick = function(){
+                    that._copy();
+                };
+                this.querySelector('.paste-button').onclick = function(){
+                    that._paste();
+                };
+                this.querySelector('.close-button').onclick = function(){
+                    that.terminal.destroy();
+                    that.fire('closed');
+                };
+            },
+            attached: function(){},
+            detached: function(){},
+            openTerminal: function(){
+                this.querySelector('.terminal-wrapper').innerHTML = '';
+                this.terminal.open(this.querySelector('.terminal-wrapper'));
+            },
+            handleReadFailure: function(msg){
+                this.writeRed('Failed to read from remote: ' + msg);
+            },
+            handleWriteFailure: function(msg){
+                this.writeRed('Failed to write to remote: ' + msg);
+            },
+            writeGreen: function(msg){
+                this.write('\r\n\x1b[32m' + msg + '\x1b[m\r\n');
+            },
+            writeRed: function(msg){
+                this.write('\r\n\x1b[31m' + msg + '\x1b[m\r\n');
+            },
+            write: function(data){
+                if(this.isRecording){
+                    this.recordBuffer += data;
+                }
+
+                this.terminal.write(data);
+            },
+            _copy: function(){
+                var copyTextarea = this.querySelector('.copy-textarea');
+                copyTextarea.value = this.recordBuffer;
+                copyTextarea.select();
+            },
+            _paste: function(){
+                var pasteTextarea = this.querySelector('.paste-textarea');
+                var text = pasteTextarea.value;
+                var indexOfFirstNewline = text.indexOf("\n");
+                var firstLine;
+                if(indexOfFirstNewline == -1){
+                    firstLine = text + "\n";
+                    text = '';
+                }else{
+                    firstLine = text.substr(0, indexOfFirstNewline+1); // plus 1 to get the newline as well
+                    text = text.substr(indexOfFirstNewline+1);
+                }
+
+                this.terminal.send(firstLine);
+                pasteTextarea.value = text;
+            },
+            ondata: function(data){}
+        });
+    })();
+</script>

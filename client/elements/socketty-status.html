@@ -1,0 +1,41 @@
+<dom-module id="socketty-status">
+    <style>
+        .connection-status-disconnected{
+            color: red;
+        }
+        .connection-status-connected{
+            color: green;
+        }
+    </style>
+    <template>
+        <p id="connection-status" class="connection-status-disconnected">Disconnected</p>
+    </template>
+</dom-module>
+<script>
+    (function () {
+        this.SockettyStatusElement = Polymer({
+            is: 'socketty-status',
+            properties: {
+                connected: {
+                    type: Boolean,
+                    value: false,
+                    observer: '_onchange'
+                }
+            },
+            ready: function() {
+
+            },
+            _onchange: function(){
+                if(this.connected){
+                    $("#connection-status").removeClass('connection-status-disconnected')
+                            .addClass('connection-status-connected')
+                            .html('Connected');
+                }else{
+                    $("#connection-status").removeClass('connection-status-connected')
+                            .addClass('connection-status-disconnected')
+                            .html('Disconnected');
+                }
+            }
+        });
+    })();
+</script>

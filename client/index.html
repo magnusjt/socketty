@@ -1,186 +1,32 @@
+<!doctype html>
 <html>
     <head>
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
-        <link rel="stylesheet" href="socketty.css">
-        <script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
-        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.3/moment.js"></script>
-        <script src="term.js"></script>
-        <script src="terminal.js"></script>
-        <script src="client.js"></script>
+        <meta charset="utf-8">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.css">
+
+        <script src="bower_components/webcomponentsjs/webcomponents.js"></script>
+        <script src="bower_components/jquery/dist/jquery.js"></script>
+        <script src="bower_components/bootstrap/dist/js/bootstrap.js"></script>
+        <script src="bower_components/moment/moment.js"></script>
+        <script src="bower_components/term.js/src/term.js"></script>
+
+        <script>
+            window.Polymer = window.Polymer || {};
+            window.Polymer.dom = 'shady';
+        </script>
+
+        <link rel="import" href="elements/elements.html">
+
+        <style>
+            body{
+                margin-bottom: 150px;
+            }
+        </style>
     </head>
     <body>
-    <div class="row" style="border-bottom: 1px #aaa solid;">
-        <div class="col-lg-offset-4 col-lg-3">
-            <h4>Socketty</h4>
-            <p id="connection-status" class="connection-status-disconnected">Disconnected</p>
-            <div class="form-group">
-                <input type="text" id="ip" placeholder="IP address" value="127.0.0.1" class="form-control" />
-            </div>
-            <div class="form-group">
-                <input type="text" id="username" placeholder="Username" value="vagrant" class="form-control" />
-            </div>
-            <div class="form-group">
-                <input type="password" id="password" placeholder="Password" value="vagrant" class="form-control" />
-            </div>
-            <div class="form-group">
-                <button class="btn btn-default" id="spawn">Spawn</button>
-                <img src="ajax-loader.gif" style="display:none;" id="spinner-gif" />
-            </div>
-            <div class="form-group">
-                <label for="messages">Log</label>
-                <textarea id="messages" class="form-control"></textarea>
-            </div>
-        </div>
-    </div>
-    <div id="terminals"></div>
-    <script>
-        $(document).ready(function(){
-            var socketty, options, terminalOptions;
-
-            function findTerminalRowById(id){
-                return $(".terminal-row[data-id=" + id + "]");
-            }
-
-            function createTerminalRow(terminal){
-                $("#terminals").prepend(
-                        '<div class="row terminal-row" data-id="' + terminal.id + '">' +
-                            '<div class="col-lg-7">' +
-                                '<div class="terminal-wrapper"></div>' +
-                                '<button class="btn btn-danger btn-sm close-button" data-id="' + terminal.id + '">Close terminal</button>' +
-                            '</div>' +
-                            '<div class="col-lg-5">' +
-                                '<h4 class="terminal-header">' + terminal.ip + '</h4>' +
-                                '<div class="form-group">' +
-                                    '<textarea class="form-control copy-textarea" data-id="' + terminal.id + '"></textarea>' +
-                                    '<button class="btn btn-default btn-sm copy-button" data-id="' + terminal.id + '">' +
-                                        '<span class="glyphicon glyphicon-copy"></span> Copy to above' +
-                                    '</button>' +
-                                '</div>' +
-                                '<div class="form-group">' +
-                                    '<textarea class="form-control paste-textarea" data-id="' + terminal.id + '"></textarea>' +
-                                    '<button class="btn btn-default btn-sm paste-button" data-id="' + terminal.id + '">' +
-                                        '<span class="glyphicon glyphicon-paste"></span> Paste first line' +
-                                    '</button>' +
-                                '</div>' +
-                            '</div>' +
-                        '</div>'
-                );
-            }
-
-            function printMessage(msg){
-                var time = moment().format('HH:mm:ss');
-                var $element = $("#messages");
-                $element.append(time + ': ' + msg + "\n");
-                $element.scrollTop($element[0].scrollHeight);
-            }
-
-            options = {
-                'url': 'wss://localhost:5678',
-                'debug': true,
-                'onOpen': function(){
-                    $("#connection-status").removeClass('connection-status-disconnected')
-                        .addClass('connection-status-connected')
-                        .html('Connected');
-
-                    printMessage('Connection established');
-                },
-                'onClose': function(){
-                    $("#connection-status").removeClass('connection-status-connected')
-                        .addClass('connection-status-disconnected')
-                        .html('Disconnected');
-
-                    printMessage('Connection lost');
-                },
-                'onError': function(){
-                    printMessage('Connection error');
-                },
-                'onAuthFailure': function(){
-                    printMessage('Authentication failed');
-                },
-                'onAuthSuccess': function(){
-                    printMessage('Authentication successful');
-                },
-                'onTerminalCreated': function(terminal){
-                    $("#spinner-gif").hide();
-                    createTerminalRow(terminal);
-                    var $container = findTerminalRowById(terminal.id).find('.terminal-wrapper');
-                    terminal.open($container);
-                    printMessage('Terminal created! (IP: ' + terminal.ip + ')');
-                },
-                'onTerminalCreateFailure': function(terminal, msg){
-                    printMessage('Failed to create terminal. Reason: ' + msg + ' (IP: ' + terminal.ip + ')');
-                },
-                'onTerminalReadFailure': function(terminal, msg){
-                    printMessage('Failed to read from remote. Reason: ' + msg + ' (IP: ' + terminal.ip + ')');
-                },
-                'onTerminalWriteFailure': function(terminal, msg){
-                    printMessage('Failed to write to remote. Reason: ' + msg + ' (IP: ' + terminal.ip + ')');
-                },
-                'onTerminalClose': function(terminal, msg){
-                    printMessage('Terminal closed. Note: ' + msg + ' (IP: ' + terminal.ip + ')');
-                    findTerminalRowById(terminal.id).remove();
-                }
-            };
-
-            socketty = new SockettyClient(options);
-
-            $("#spawn").click(function(e){
-                e.preventDefault();
-
-                if(!socketty.isConnected()){
-                    printMessage('Cannot spawn right now because no connection is available');
-                    return;
-                }
-
-                var ip = $("#ip").val();
-                var username = $("#username").val();
-                var password = $("#password").val();
-
-                terminalOptions = {
-                    cols: 120,
-                    rows: 30,
-                    screenKeys: true,
-                    useStyle: false,
-                    cursorBlink: true
-                };
-
-                var terminal = socketty.requestCreateTerminal(ip, username, password, terminalOptions);
-                terminal.setRecord(true);
-                printMessage('Requesting new terminal...');
-            });
-
-            $("#terminals").on('click', '.close-button', function(){
-                var id = $(this).data('id');
-                socketty.requestCloseTerminal(id);
-                printMessage('Requesting close terminal...');
-            })
-            .on('click', '.copy-button', function(){
-                var id = $(this).data('id');
-                var terminal = socketty.getTerminalById(id);
-                var text = terminal.getRecorded();
-                $(".copy-textarea[data-id=" + id + "]").val(text).select();
-            })
-            .on('click', '.paste-button', function(){
-                var id = $(this).data('id');
-                var terminal = socketty.getTerminalById(id);
-                var $textareaElement = $(".paste-textarea[data-id=" + id + "]");
-                var text = $textareaElement.val();
-                var indexOfFirstNewline = text.indexOf("\n");
-                var firstLine;
-                if(indexOfFirstNewline == -1){
-                    firstLine = text + "\n";
-                    text = '';
-                }else{
-                    firstLine = text.substr(0, indexOfFirstNewline+1); // plus 1 to get the newline as well
-                    text = text.substr(indexOfFirstNewline+1);
-                }
-
-                terminal.paste(firstLine);
-                $textareaElement.val(text);
-            });
-
-        });
-    </script>
+        <socketty-client url="wss://localhost:5678" debug retry retryTime=5></socketty-client>
     </body>
 </html>

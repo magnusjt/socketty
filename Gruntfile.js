@@ -1,54 +1,38 @@
 module.exports = function(grunt) {
     grunt.initConfig({
         pkg: grunt.file.readJSON('package.json'),
-        concat: {
-            js: {
-                "src": [
-                    "client/terminal.js",
-                    "client/client.js"
-                ],
-                "dest": "dist/socketty.js"
+        // Copy all the thirdparty libs into the client folder where they are accessible from web server
+        copy: {
+            bower: {
+                files: [
+                    {"expand": true, "src": "bower_components/**", "dest": "client/"}
+                ]
             }
-            /*
-            css: {
-                "src": [
-                    "client/socketty.css"
-                ],
-                "dest": "dist/socketty.css"
-            }
-            */
         },
-        uglify: {
+        // Concatenates all the web components
+        vulcanize: {
             app: {
-                options: {
-                    mangle: false,
-                    compress: true
-                },
+                options: {},
                 files: {
-                    "dist/socketty.min.js": "dist/socketty.js"
+                    "dist/elements.vulcanized.html": "client/elements/elements.html"
                 }
             }
         }
-        /*
-        cssmin: {
-            app: {
-                files: {
-                    'dist/socketty.min.css': "dist/socketty.css"
-                }
-            }
-        }
-        */
     });
 
+    grunt.loadNpmTasks('grunt-contrib-copy');
     grunt.loadNpmTasks('grunt-contrib-concat');
     grunt.loadNpmTasks('grunt-contrib-uglify');
-    //grunt.loadNpmTasks('grunt-contrib-cssmin');
+    grunt.loadNpmTasks('grunt-contrib-cssmin');
+    grunt.loadNpmTasks('grunt-vulcanize');
 
-    grunt.registerTask('build_project', [
-        'concat',
-        'uglify'
-        //'cssmin'
+    grunt.registerTask('copy_bower', [
+        'copy:bower'
     ]);
 
-    grunt.registerTask('default', ['build_project']);
+    grunt.registerTask('build', [
+        'vulcanize'
+    ]);
+
+    grunt.registerTask('default', ['copy_bower']);
 };

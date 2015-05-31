@@ -3,6 +3,7 @@
 profiles/
 vendor/
 node_modules/
+bower_components/
 composer.lock
 phpunit.xml
 Vagrantfile
