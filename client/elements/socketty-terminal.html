@@ -5,15 +5,26 @@
         }
         #main-header{
             margin: 0;
-            padding-bottom: 15px;
+            padding-bottom: 5px;
         }
         #messages{
             font-size: small;
             color: #999;
         }
+        #connect-form{
+            text-align: center;
+            padding-top: 30px;
+            padding-bottom: 30px;
+        }
         #wait-for-connection{
             text-align: center;
-            padding: 100px;
+            padding-top: 30px;
+            padding-bottom: 30px;
+        }
+        #terminal-wrapper{
+        }
+        #toggle-messages{
+            cursor: pointer;
         }
         #copy-textarea{
             font-size: x-small;
@@ -33,26 +44,18 @@
     <template>
         <div id="wrapper">
 
-        <h4 id="main-header">{{header}}</h4>
+        <h4 id="main-header">{{ip}}</h4>
         <div class="form-group">
+            <span class="btn-link" id="toggle-messages">Show/hide messages</span>
             <textarea id="messages" class="form-control" rows="2" readonly>Messages:</textarea>
         </div>
 
-        <div class="template row" id="connect-form">
-            <div class="col-lg-offset-4 col-lg-4">
-                <div class="form-group">
-                    <input type="text" class="form-control" placeholder="IP" value="127.0.0.1" id="input-ip" />
-                </div>
-                <div class="form-group">
-                    <input type="text" class="form-control" placeholder="Username" value="vagrant" id="input-username" />
-                </div>
-                <div class="form-group">
-                    <input type="password" class="form-control" placeholder="Password" value="vagrant" id="input-password" />
-                </div>
-                <div class="form-group">
-                    <button id="connect-button" class="btn btn-sm btn-default"><span class="glyphicon glyphicon-console"></span> Connect</button>
-                    <span id="status"></span>
-                </div>
+        <div class="template" id="connect-form">
+            <div class="form-inline">
+                <input type="text" class="form-control" placeholder="IP" value="{{ip}}" id="input-ip" />
+                <input type="text" class="form-control" placeholder="Username" id="input-username" />
+                <input type="password" class="form-control" placeholder="Password" id="input-password" />
+                <button id="connect-button" class="btn btn-default"><span class="glyphicon glyphicon-console"></span> Connect</button>
             </div>
         </div>
 
@@ -202,8 +205,7 @@
                 useStyle:    {type: Boolean, value: false},
                 cursorBlink: {type: Boolean, value: true},
                 debug:       {type: Boolean, value: false},
-                isRecording: {type: Boolean, value: true},
-                header:      {type: String, value: 'New Terminal'}
+                isRecording: {type: Boolean, value: true}
             },
             ready: function() {
                 if(connections.hasOwnProperty(this.url)){
@@ -240,7 +242,7 @@
                         'password': password
                     });
 
-                    that.header = ip;
+                    that.ip = ip;
                     that._switchTemplate('wait-for-connection');
                 };
                 this.querySelector('#close-button').onclick = function(){
@@ -256,6 +258,10 @@
                 };
                 this.querySelector("#terminal-wrapper").onresize = function(){
                     alert('blarg');
+                };
+                this.querySelector("#toggle-messages").onclick = function(){
+                    var prev = that.$.messages.style.display;
+                    that.$.messages.style.display = prev == 'none' ? 'block' : 'none';
                 };
             },
             handleMessage: function(type, value){
