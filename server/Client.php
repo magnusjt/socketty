@@ -23,13 +23,6 @@ class Client{
 
     const MESSAGE_UNKNOWN = 11; // From server
 
-    const AUTHENTICATE = 12; // From client
-    const AUTHENTICATION_SUCCESS = 13; // From server
-    const AUTHENTICATION_FAILURE = 14; // From server
-
-    const STATE_CONNECTED = 2;
-    const STATE_AUTHENTICATED = 3;
-
     /** @var  LoggerInterface */
     private $logger;
 
@@ -45,24 +38,16 @@ class Client{
     /** @var Terminal[] */
     private $terminals;
 
-    /** @var  AuthenticatorInterface */
-    private $authenticator;
-
     /** @var AuthorizerInterface  */
     private $authorizer;
-
-    /** @var int */
-    private $state = self::STATE_CONNECTED;
 
     public function __construct(LoggerInterface $logger,
                                 ConnectionInterface $conn,
                                 LoopInterface $loop,
-                                AuthenticatorInterface $authenticator = null,
                                 AuthorizerInterface $authorizer = null){
         $this->logger = $logger;
         $this->conn = $conn;
         $this->loop = $loop;
-        $this->authenticator = $authenticator;
         $this->authorizer = $authorizer;
         $this->terminals = new \SplObjectStorage();
 
@@ -96,46 +81,23 @@ class Client{
     /**
      * Handles incoming socket messages
      *
-     * @param $type
-     * @param $obj
+     * @param $id    int Terminal id
+     * @param $type  int Type of message
+     * @param $value mixed
      */
-    public function handleMessage($type, $obj){
-        switch($this->state){
-            case self::STATE_CONNECTED:
-                $this->handleMessageStateConnected($type, $obj);
-                break;
-            case self::STATE_AUTHENTICATED;
-                $this->handleMessageStateAuthenticated($type, $obj);
-                break;
-            default:
-                break;
-        }
-    }
-
-    private function handleMessageStateConnected($type, $obj){
-        switch($type){
-            case self::AUTHENTICATE:
-                $this->performAuthentication();
-                break;
-            default:
-                $this->send(self::MESSAGE_UNKNOWN, $obj);
-                break;
-        }
-    }
-
-    private function handleMessageStateAuthenticated($type, $obj){
+    public function handleMessage($id, $type, $value){
         switch($type){
             case self::CREATE_TERMINAL:
-                $this->createTerminal($obj['id'], $obj['ip'], $obj['username'], $obj['password']);
+                $this->createTerminal($id, $value['ip'], $value['username'], $value['password']);
                 break;
             case self::WRITE_TERMINAL_DATA:
-                $this->writeTerminalData($obj['id'], $obj['d']);
+                $this->writeTerminalData($id, $value['d']);
                 break;
             case self::CLOSE_TERMINAL:
-                $this->closeTerminalById($obj['id']);
+                $this->closeTerminalById($id);
                 break;
             default:
-                $this->send(self::MESSAGE_UNKNOWN, $obj);
+                $this->send(self::MESSAGE_UNKNOWN, $value);
                 break;
         }
     }
@@ -155,24 +117,7 @@ class Client{
 
         $terminal->close();
 
-        $this->send(self::CLOSE_TERMINAL_SUCCESS, array(
-            'id' => $id
-        ));
-    }
-
-    private function performAuthentication(){
-        if($this->authenticator === null
-            or $this->authenticator->check($this->session)
-        ){
-            $this->logger->info('Authentication successful');
-            $this->state = self::STATE_AUTHENTICATED;
-            $this->send(self::AUTHENTICATION_SUCCESS);
-            return;
-        }
-
-        $this->logger->info('Authentication failed, closing connection.');
-        $this->send(self::AUTHENTICATION_FAILURE);
-        $this->conn->close();
+        $this->send($id, self::CLOSE_TERMINAL_SUCCESS);
     }
 
     /**
@@ -187,21 +132,14 @@ class Client{
         $this->logger->info('Creating new terminal to IP ' . $ip);
 
         if($this->authorizer !== null and !$this->authorizer->check($this->session, $ip, $username)){
-            $this->send(self::CREATE_TERMINAL_FAILURE, array(
-                'id' => $id,
-                'msg' => 'Not authorized'
-            ));
-
+            $this->logger->error('Terminal could not be created because the user was not authorized for this IP');
+            $this->send($id, self::CREATE_TERMINAL_FAILURE, array('msg' => 'Not authorized for that ip'));
             return;
         }
 
         if(false !== $this->getTerminalById($id)){
-            $this->logger->error('Terminal could not be created because the requested id already exists');
-            $this->send(self::CREATE_TERMINAL_FAILURE, array(
-                'id' => $id,
-                'msg' => 'Could not connect because terminal id already exists'
-            ));
-
+            $this->logger->error('Could not create terminal because terminal id already exists');
+            $this->send($id, self::CREATE_TERMINAL_FAILURE, array('msg' => 'Could not create terminal because terminal id already exists'));
             return;
         }
 
@@ -209,19 +147,13 @@ class Client{
             $terminal = new Terminal($ip, $username, $password, $id);
         }catch(\Exception $e){
             $this->logger->error('Terminal could not be created', array('exception' => $e));
-            $this->send(self::CREATE_TERMINAL_FAILURE, array(
-                'id' => $id,
-                'msg' => 'Could not connect, ' . $e->getMessage()
-            ));
-
+            $this->send($id, self::CREATE_TERMINAL_FAILURE, array('msg' => 'Could not connect, ' . $e->getMessage()));
             return;
         }
 
         $this->terminals->attach($terminal);
 
-        $this->send(self::CREATE_TERMINAL_SUCCESS, array(
-            'id' => $id
-        ));
+        $this->send($id, self::CREATE_TERMINAL_SUCCESS);
 
         $this->loop->addReadStream($terminal->getStream(), function() use ($terminal){
             $this->sendTerminalUpdate($terminal);
@@ -241,20 +173,14 @@ class Client{
         $terminal = $this->getTerminalById($id);
 
         if($terminal === false){
-            $this->send(self::WRITE_TERMINAL_DATA_FAILURE, array(
-                'id' => $id,
-                'msg' => 'Unknown terminal'
-            ));
+            $this->send($id, self::WRITE_TERMINAL_DATA_FAILURE, array('msg' => 'Unknown terminal'));
             return;
         }
 
         try{
             $terminal->write($data);
         }catch(\Exception $e){
-            $this->send(self::WRITE_TERMINAL_DATA_FAILURE, array(
-                'id' => $id,
-                'msg' => $e->getMessage()
-            ));
+            $this->send($id, self::WRITE_TERMINAL_DATA_FAILURE, array('msg' => $e->getMessage()));
         }
     }
 
@@ -268,10 +194,7 @@ class Client{
         if($terminal !== false){
             $this->closeTerminal($terminal);
         }else{
-            $this->send(self::CLOSE_TERMINAL_FAILURE, array(
-                'id' => $id,
-                'msg' => 'Unknown terminal'
-            ));
+            $this->send($id, self::CLOSE_TERMINAL_FAILURE, array('msg' => 'Unknown terminal'));
         }
     }
 
@@ -288,31 +211,26 @@ class Client{
         }catch(\Exception $e){
             $this->logger->error('Terminal read failure, closing terminal', array('exception' => $e));
 
-            $this->send(self::READ_TERMINAL_DATA_FAILURE, array(
-                'id' => $id,
-                'msg' => $e->getMessage()
-            ));
-
+            $this->send($id, self::READ_TERMINAL_DATA_FAILURE, array('msg' => $e->getMessage()));
             $this->closeTerminal($terminal);
             return;
         }
 
-        $this->send(self::READ_TERMINAL_DATA, array(
-            'id' => $id,
-            'd' => $data
-        ));
+        $this->send($id, self::READ_TERMINAL_DATA, array('d' => $data));
     }
 
     /**
      * Send a general message to the client
      *
-     * @param $type
-     * @param $obj
+     * @param $id     int Terminal id
+     * @param $type   int Message type
+     * @param $value  mixed
      */
-    private function send($type, $obj = array()){
+    private function send($id, $type, $value = array()){
         $message = array(
+            'id' => $id,
             'type' => $type,
-            'value' => $obj
+            'value' => $value
         );
 
         $this->conn->send(json_encode($message));

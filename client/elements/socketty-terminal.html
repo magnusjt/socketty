@@ -1,80 +1,311 @@
 <dom-module id="socketty-terminal">
     <style>
-        .terminal-row {
-            border-bottom: 1px #aaa solid;
-            padding: 20px 50px;
+        #wrapper{
+            padding: 15px;
         }
-        .copy-textarea{
+        #main-header{
+            margin: 0;
+            padding-bottom: 15px;
+        }
+        #messages{
+            font-size: small;
+            color: #999;
+        }
+        #wait-for-connection{
+            text-align: center;
+            padding: 100px;
+        }
+        #copy-textarea{
             font-size: x-small;
         }
-        .paste-textarea{
+        #paste-textarea{
             min-height: 200px;
             font-size: small;
         }
-        .terminal-header{
-
-        }
-        .close-button{
+        #close-button{
             float:right;
         }
-        .paper-progress{
+        #paper-progress{
             width: 100%;
         }
-        .terminal {
-            border: #000 solid 5px;
-            font-family: "DejaVu Sans Mono", "Liberation Mono", monospace;
-            font-size: 11px;
-            color: #f0f0f0;
-            background: #000;
-        }
-        .terminal-cursor {
-            color: #000;
-            background: #f0f0f0;
-        }
     </style>
+
     <template>
-        <div class="row terminal-row">
+        <div id="wrapper">
+
+        <h4 id="main-header">{{header}}</h4>
+        <div class="form-group">
+            <textarea id="messages" class="form-control" rows="2" readonly>Messages:</textarea>
+        </div>
+
+        <div class="template row" id="connect-form">
+            <div class="col-lg-offset-4 col-lg-4">
+                <div class="form-group">
+                    <input type="text" class="form-control" placeholder="IP" value="127.0.0.1" id="input-ip" />
+                </div>
+                <div class="form-group">
+                    <input type="text" class="form-control" placeholder="Username" value="vagrant" id="input-username" />
+                </div>
+                <div class="form-group">
+                    <input type="password" class="form-control" placeholder="Password" value="vagrant" id="input-password" />
+                </div>
+                <div class="form-group">
+                    <button id="connect-button" class="btn btn-sm btn-default"><span class="glyphicon glyphicon-console"></span> Connect</button>
+                    <span id="status"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="template" id="wait-for-connection" style="display:none;">
+            <h4>Connecting to host...</h4>
+            <paper-progress indeterminate id="paper-progress"></paper-progress>
+        </div>
+
+        <div class="template row" id="terminal-open" style="display:none;">
             <div class="col-lg-7">
-                <div class="terminal-wrapper"></div>
-                <button class="btn btn-danger btn-sm close-button">Close terminal</button>
-                <paper-progress indeterminate class="paper-progress"></paper-progress>
+                <div id="terminal-wrapper"></div>
+                <button class="btn btn-danger btn-sm" id="close-button">Close terminal</button>
             </div>
             <div class="col-lg-5">
-                <h4 class="terminal-header">{{ header }}</h4>
                 <div class="form-group">
-                    <textarea class="form-control copy-textarea"></textarea>
-                    <button class="btn btn-default btn-sm copy-button">
+                    <textarea class="form-control" id="copy-textarea"></textarea>
+                    <button class="btn btn-default btn-sm" id="copy-button">
                         <span class="glyphicon glyphicon-copy"></span> Copy to above
                     </button>
                 </div>
                 <div class="form-group">
-                    <textarea class="form-control paste-textarea"></textarea>
-                    <button class="btn btn-default btn-sm paste-button">
+                    <textarea class="form-control" id="paste-textarea"></textarea>
+                    <button class="btn btn-default btn-sm" id="paste-button">
                         <span class="glyphicon glyphicon-paste"></span> Paste first line
                     </button>
                 </div>
-                <p id="errors" style="color:red;"></p>
             </div>
+        </div>
+
         </div>
     </template>
 </dom-module>
 <script>
     (function () {
+        const CREATE_TERMINAL = 1; // From client
+        const CREATE_TERMINAL_SUCCESS = 2; // From server
+        const CREATE_TERMINAL_FAILURE = 3; // From server
+
+        const READ_TERMINAL_DATA = 4; // From server
+        const READ_TERMINAL_DATA_FAILURE = 5; // From server
+
+        const WRITE_TERMINAL_DATA = 6; // From client
+        const WRITE_TERMINAL_DATA_FAILURE = 7; // From server
+
+        const CLOSE_TERMINAL = 8; // From client
+        const CLOSE_TERMINAL_SUCCESS = 9; // From server
+        const CLOSE_TERMINAL_FAILURE = 10; // From server
+
+        const MESSAGE_UNKNOWN = 11; // From server
+
+        var nextTerminalId = 0;
+        function Connection(url){
+            this.url = url;
+            this.terminals = {};
+            this._connect();
+        }
+        Connection.prototype._connect = function(){
+            var that = this;
+            this.authenticated = false;
+            this.retry = true;
+            this.websocket = new WebSocket(this.url);
+
+            this.websocket.onopen = function(){
+                for(var id in that.terminals){
+                    if(that.terminals.hasOwnProperty(id)){
+                        that.terminals[id].handleConnectionOpen();
+                    }
+                }
+            };
+            this.websocket.onclose = function(){
+                for(var id in that.terminals){
+                    if(that.terminals.hasOwnProperty(id)){
+                        that.terminals[id].handleConnectionClose();
+                    }
+                }
+
+                // Try to reconnect in 5 seconds
+                if(that.authenticated){
+                    setTimeout(function(){
+                        that._connect();
+                    }, 5*1000);
+                }
+            };
+            this.websocket.onerror = function(){
+                for(var id in that.terminals){
+                    if(that.terminals.hasOwnProperty(id)){
+                        that.terminals[id].handleConnectionError();
+                    }
+                }
+            };
+            this.websocket.onmessage = function(message){
+                // Check for plain messages first
+                switch(message.data){
+                    case 'auth_failure':
+                        that.authenticated = false;
+                        for(var id in that.terminals){
+                            if(that.terminals.hasOwnProperty(id)){
+                                that.terminals[id].handleAuthFailure();
+                            }
+                        }
+                        break;
+                    case 'auth_success':
+                        that.authenticated = true;
+                        break;
+                    default:
+                        var obj = JSON.parse(message.data);
+                        that.terminals[obj.id].handleMessage(obj.type, obj.value);
+                        break;
+                }
+            };
+        };
+        Connection.prototype.register = function(terminal){
+            terminal.terminalId = nextTerminalId;
+            this.terminals[nextTerminalId] = terminal;
+            nextTerminalId++;
+        };
+        Connection.prototype.unregister = function(terminal){
+            delete this.terminals[terminal.terminalId];
+        };
+        Connection.prototype.send = function(terminal, type, value){
+            if(value === undefined){
+                value = {};
+            }
+            if(this.isConnected() && this.isAuthenticated()){
+                this.websocket.send(JSON.stringify({'id': terminal.terminalId, 'type': type, 'value': value}));
+                return true;
+            }
+
+            return false;
+        };
+        Connection.prototype.isConnected = function(){
+            return this.websocket.readyState == WebSocket.OPEN;
+        };
+        Connection.prototype.isAuthenticated = function(){
+            return this.authenticated;
+        };
+
+        var connections = {};
         this.SockettyTerminal = Polymer({
             is: 'socketty-terminal',
             properties: {
+                url:         {type: String, value: 'wss://localhost:5678'},
+                ip:          {type: String, value: '127.0.0.1'},
                 cols:        {type: Number, value: 120},
                 rows:        {type: Number, value: 30},
                 screenKeys:  {type: Boolean, value: true},
                 useStyle:    {type: Boolean, value: false},
-                cursorBlink: {type: Boolean, value: false},
+                cursorBlink: {type: Boolean, value: true},
                 debug:       {type: Boolean, value: false},
                 isRecording: {type: Boolean, value: true},
-                header:      {type: String, value: 'Terminal'}
+                header:      {type: String, value: 'New Terminal'}
             },
             ready: function() {
+                if(connections.hasOwnProperty(this.url)){
+                    this.conn = connections[this.url];
+                }else{
+                    this.conn = new Connection(this.url);
+                    connections[this.url] = this.conn;
+                }
+
+                this.conn.register(this);
+                this._setListeners();
+            },
+            _setListeners: function(){
                 var that = this;
 
+                this.querySelector('#connect-button').onclick = function(){
+                    if(!that.conn.isConnected()){
+                        that._printMessage('Cannot spawn terminal because connection to server is lost');
+                        return;
+                    }
+                    if(!that.conn.isAuthenticated()){
+                        that._printMessage('Cannot spawn terminal because authentication failed');
+                        return;
+                    }
+
+                    var ip = that.querySelector('#input-ip').value;
+                    var username = that.querySelector('#input-username').value;
+                    var password = that.querySelector('#input-password').value;
+
+                    that._printMessage('Attempting to connect terminal...');
+                    that.conn.send(that, CREATE_TERMINAL, {
+                        'ip': ip,
+                        'username': username,
+                        'password': password
+                    });
+
+                    that.header = ip;
+                    that._switchTemplate('wait-for-connection');
+                };
+                this.querySelector('#close-button').onclick = function(){
+                    that.terminal.destroy();
+                    that.conn.send(that, CLOSE_TERMINAL);
+                    that._switchTemplate('connect-form');
+                };
+                this.querySelector('#copy-button').onclick = function(){
+                    that._copy();
+                };
+                this.querySelector('#paste-button').onclick = function(){
+                    that._paste();
+                };
+                this.querySelector("#terminal-wrapper").onresize = function(){
+                    alert('blarg');
+                };
+            },
+            handleMessage: function(type, value){
+                switch(type){
+                    case CREATE_TERMINAL_SUCCESS:
+                        this._printMessage('Terminal connected successfully');
+                        this._openTerminal();
+                        this._switchTemplate('terminal-open');
+                        break;
+                    case CREATE_TERMINAL_FAILURE:
+                        this._printMessage('Failed to create terminal: ' + value.msg);
+                        this._switchTemplate('connect-form');
+                        break;
+                    case READ_TERMINAL_DATA:
+                        this._writeToTerminalFromRemote(value.d);
+                        break;
+                    case READ_TERMINAL_DATA_FAILURE:
+                        this._printMessage('Failed to read from remote: ' + value.msg);
+                        break;
+                    case WRITE_TERMINAL_DATA_FAILURE:
+                        this._printMessage('Failed to write to remote: ' + value.msg);
+                        break;
+                    case CLOSE_TERMINAL_SUCCESS:
+                        this._printMessage('Terminal closed');
+                        break;
+                    case CLOSE_TERMINAL_FAILURE:
+                        this._printMessage('Terminal could not be closed properly: ' + value.msg);
+                        break;
+                    case MESSAGE_UNKNOWN:
+                        this._printMessage('Message was unknown to the server. Weird.');
+                        break;
+                    default:
+                        this._printMessage('Received an unknown message from the server. Throwing it away.');
+                        break;
+                }
+            },
+            handleConnectionOpen: function(){
+                this._printMessage('Connection established');
+            },
+            handleConnectionClose: function(){
+                this._printMessage('Connection lost');
+            },
+            handleConnectionError: function(){
+                this._printMessage('Connection error');
+            },
+            handleAuthFailure: function(){
+                this._printMessage('Authentication failure');
+            },
+            _openTerminal: function(){
+                var that = this;
                 this.recordBuffer = '';
                 this.terminal = new Terminal({
                     cols:        this.cols,
@@ -83,53 +314,40 @@
                     cursorBlink: this.cursorBlink,
                     debug:       this.debug
                 });
-
                 this.terminal.on('data', function(data){
-                    that.ondata(data);
+                    that.conn.send(that, WRITE_TERMINAL_DATA, {'d': data});
                 });
-                this.querySelector('.copy-button').onclick = function(){
-                    that._copy();
-                };
-                this.querySelector('.paste-button').onclick = function(){
-                    that._paste();
-                };
-                this.querySelector('.close-button').onclick = function(){
-                    that.terminal.destroy();
-                    that.fire('closed');
-                };
+                this.terminal.open(this.querySelector('#terminal-wrapper'));
             },
-            attached: function(){},
-            detached: function(){},
-            openTerminal: function(){
-                this.querySelector('.terminal-wrapper').innerHTML = '';
-                this.terminal.open(this.querySelector('.terminal-wrapper'));
-            },
-            handleReadFailure: function(msg){
-                this.writeRed('Failed to read from remote: ' + msg);
-            },
-            handleWriteFailure: function(msg){
-                this.writeRed('Failed to write to remote: ' + msg);
-            },
-            writeGreen: function(msg){
-                this.write('\r\n\x1b[32m' + msg + '\x1b[m\r\n');
-            },
-            writeRed: function(msg){
-                this.write('\r\n\x1b[31m' + msg + '\x1b[m\r\n');
-            },
-            write: function(data){
+            _writeToTerminalFromRemote: function(data){
                 if(this.isRecording){
                     this.recordBuffer += data;
                 }
 
                 this.terminal.write(data);
             },
+            _switchTemplate: function(id){
+                var elems = this.querySelectorAll(".template");
+
+                for(var i = 0; i < elems.length; i++){
+                    elems[i].style.display = 'none';
+                }
+
+                this.querySelector("#"+id).style.display = 'block';
+            },
+            _printMessage: function(msg){
+                var time = moment().format('HH:mm:ss');
+                var element = this.querySelector('#messages');
+                element.value += "\n" + time + ': ' + msg;
+                element.scrollTop = element.scrollHeight;
+            },
             _copy: function(){
-                var copyTextarea = this.querySelector('.copy-textarea');
+                var copyTextarea = this.querySelector('#copy-textarea');
                 copyTextarea.value = this.recordBuffer;
                 copyTextarea.select();
             },
             _paste: function(){
-                var pasteTextarea = this.querySelector('.paste-textarea');
+                var pasteTextarea = this.querySelector('#paste-textarea');
                 var text = pasteTextarea.value;
                 var indexOfFirstNewline = text.indexOf("\n");
                 var firstLine;
@@ -144,7 +362,11 @@
                 this.terminal.send(firstLine);
                 pasteTextarea.value = text;
             },
-            ondata: function(data){}
+            pasteExternal: function(text){
+                if(this.terminal){
+                    this.terminal.send(text);
+                }
+            }
         });
     })();
 </script>

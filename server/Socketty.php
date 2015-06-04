@@ -59,7 +59,17 @@ class Socketty implements MessageComponentInterface{
     function onOpen(ConnectionInterface $conn){
         $this->logger->info('Connection established');
 
-        $this->clients->attach(new Client($this->logger, $conn, $this->loop, $this->authenticator, $this->authorizer));
+        if($this->authenticator === null
+           or $this->authenticator->check($conn->Session)
+        ){
+            $this->logger->info('Authentication successful');
+            $this->clients->attach(new Client($this->logger, $conn, $this->loop, $this->authorizer));
+            $conn->send('auth_success');
+        }else{
+            $this->logger->info('Authentication failed');
+            $conn->send('auth_failure');
+            $conn->close();
+        }
 
         $this->logStatistics();
     }
@@ -68,9 +78,7 @@ class Socketty implements MessageComponentInterface{
         $this->logger->info('Connection closed. Closing client now.');
 
         $client = $this->getClientFromConnection($conn);
-        if($client === false){
-            $this->logger->error('Could not properly close client because client was not found');
-        }else{
+        if($client !== false){
             $this->clients->detach($client);
             $client->close();
         }
@@ -97,7 +105,7 @@ class Socketty implements MessageComponentInterface{
         }
 
         try{
-            $client->handleMessage($obj['type'], $obj['value']);
+            $client->handleMessage($obj['id'], $obj['type'], $obj['value']);
         }catch(\Exception $e){
             $this->logger->error('Error handling message from client. Closing the connection now.', array('exception' => $e));
             $from->close();

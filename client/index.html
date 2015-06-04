@@ -22,11 +22,60 @@
 
         <style>
             body{
+                margin: 0;
+                padding: 0;
                 margin-bottom: 150px;
+            }
+            .terminal {
+                border: #000 solid 5px;
+                font-family: "DejaVu Sans Mono", "Liberation Mono", monospace;
+                font-size: 11px;
+                color: #f0f0f0;
+                background: #000;
+            }
+            .terminal-cursor {
+                color: #000;
+                background: #f0f0f0;
+            }
+            .socketty-wrapper{
+                border-bottom: 1px solid #aaa;
             }
         </style>
     </head>
     <body>
-        <socketty-client url="wss://localhost:5678" debug retry retryTime=5></socketty-client>
+        <div id="terminals">
+            <div class="socketty-wrapper">
+                <socketty-terminal></socketty-terminal>
+            </div>
+        </div>
+        <br />
+        <div style="text-align: center;">
+            <div class="form-group">
+                <button class="btn btn-large btn-success" id="another">Another!</button>
+            </div>
+            <div class="form-inline">
+                <label>Send to all terminals</label>
+                <input type="text" class="form-control" id="mass-send-input">
+                <button class="btn btn-default" id="mass-send-button">Send</button>
+            </div>
+        </div>
     </body>
+    <script>
+        $("#another").click(function(){
+            $("#terminals").append("<div class='socketty-wrapper'>" +
+                                        "<socketty-terminal></socketty-terminal>" +
+                                    "</div>");
+        });
+        $("#mass-send-button").click(function(e){
+            e.preventDefault();
+            var $input = $("#mass-send-input");
+            var val = $input.val();
+
+            $("socketty-terminal").each(function(){
+                $(this)[0].pasteExternal(val + "\n");
+            });
+
+            $input.val("");
+        });
+    </script>
 </html>
