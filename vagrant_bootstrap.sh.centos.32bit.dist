@@ -42,16 +42,8 @@ cat /etc/pki/tls/certs/dummycert.crt /etc/pki/tls/private/dummycert.key > /etc/p
 # Disable sendfile, as that doesnt work properly inside vagrant
 sed -i 's/.*#EnableSendfile.*/EnableSendfile off/' /etc/httpd/conf/httpd.conf
 
-# Make apache listen to port 8880 instead of port 80
-sed -i 's/Listen 80/Listen 8880/' /etc/httpd/conf/httpd.conf
-
-# And make the https port 4443 instead of 443
-sed -i 's/Listen 443/Listen 4443/' /etc/httpd/conf.d/ssl.conf
-sed -i 's/_default_:443/_default_:4443/' /etc/httpd/conf.d/ssl.conf
-
-# Point to the dummy certificate files in apache ssl conf
-sed -i 's/SSLCertificateFile \/etc\/pki\/tls\/certs\/localhost.crt/SSLCertificateFile \/etc\/pki\/tls\/certs\/dummycert.crt/' /etc/httpd/conf.d/ssl.conf
-sed -i 's/SSLCertificateKeyFile \/etc\/pki\/tls\/private\/localhost.key/SSLCertificateKeyFile \/etc\/pki\/tls\/private\/dummycert.key/' /etc/httpd/conf.d/ssl.conf
+# Stop apache listening on port 443
+sed -i 's/Listen 443/#Listen 443/' /etc/httpd/conf.d/ssl.conf
 
 # Enable UDP syslog for haproxy logging
 sed -i 's/#\$ModLoad imudp/$ModLoad imudp/' /etc/rsyslog.conf
