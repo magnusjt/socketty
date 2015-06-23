@@ -45,18 +45,13 @@
     <body>
         <div id="terminals">
             <div class="socketty-wrapper">
-                <socketty-terminal></socketty-terminal>
+                <socketty-terminal username="vagrant" ip="127.0.0.1"></socketty-terminal>
             </div>
         </div>
         <br />
         <div style="text-align: center;">
             <div class="form-group">
                 <button class="btn btn-large btn-success" id="another">Another!</button>
-            </div>
-            <div class="form-inline">
-                <label>Send to all terminals</label>
-                <input type="text" class="form-control" id="mass-send-input">
-                <button class="btn btn-default" id="mass-send-button">Send</button>
             </div>
         </div>
     </body>
@@ -65,17 +60,6 @@
             $("#terminals").append("<div class='socketty-wrapper'>" +
                                         "<socketty-terminal></socketty-terminal>" +
                                     "</div>");
-        });
-        $("#mass-send-button").click(function(e){
-            e.preventDefault();
-            var $input = $("#mass-send-input");
-            var val = $input.val();
-
-            $("socketty-terminal").each(function(){
-                $(this)[0].pasteExternal(val + "\n");
-            });
-
-            $input.val("");
         });
     </script>
 </html>

@@ -9221,7 +9221,7 @@ To change the progress bar background color:
         <div class="template" id="connect-form">
             <div class="form-inline">
                 <input type="text" class="form-control" placeholder="IP" value="{{ip}}" id="input-ip">
-                <input type="text" class="form-control" placeholder="Username" id="input-username">
+                <input type="text" class="form-control" placeholder="Username" value="{{username}}" id="input-username">
                 <input type="password" class="form-control" placeholder="Password" id="input-password">
                 <button id="connect-button" class="btn btn-default"><span class="glyphicon glyphicon-console"></span> Connect</button>
             </div>
@@ -9278,11 +9278,12 @@ To change the progress bar background color:
         function Connection(url){
             this.url = url;
             this.terminals = {};
+            this.authenticated = false;
+            this.reconnect = true;
             this._connect();
         }
         Connection.prototype._connect = function(){
             var that = this;
-            this.authenticated = false;
             this.retry = true;
             this.websocket = new WebSocket(this.url);
 
@@ -9301,7 +9302,7 @@ To change the progress bar background color:
                 }
 
                 // Try to reconnect in 5 seconds
-                if(that.authenticated){
+                if(that.reconnect){
                     setTimeout(function(){
                         that._connect();
                     }, 5*1000);
@@ -9319,6 +9320,7 @@ To change the progress bar background color:
                 switch(message.data){
                     case 'auth_failure':
                         that.authenticated = false;
+                        that.reconnect = false;
                         for(var id in that.terminals){
                             if(that.terminals.hasOwnProperty(id)){
                                 that.terminals[id].handleAuthFailure();
@@ -9366,7 +9368,8 @@ To change the progress bar background color:
             is: 'socketty-terminal',
             properties: {
                 url:         {type: String, value: 'wss://localhost:5678'},
-                ip:          {type: String, value: '127.0.0.1'},
+                ip:          {type: String, value: ''},
+                username:    {type: String, value: ''},
                 cols:        {type: Number, value: 120},
                 rows:        {type: Number, value: 30},
                 screenKeys:  {type: Boolean, value: true},
