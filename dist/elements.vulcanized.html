@@ -9332,7 +9332,9 @@ To change the progress bar background color:
                         break;
                     default:
                         var obj = JSON.parse(message.data);
-                        that.terminals[obj.id].handleMessage(obj.type, obj.value);
+                        if(that.terminals.hasOwnProperty(obj.id)){
+                            that.terminals[obj.id].handleMessage(obj.type, obj.value);
+                        }
                         break;
                 }
             };
@@ -9386,8 +9388,13 @@ To change the progress bar background color:
                     connections[this.url] = this.conn;
                 }
 
+                this._isOpen = false;
                 this.conn.register(this);
                 this._setListeners();
+            },
+            detached: function(){
+                this._closeTerminal();
+                this.conn.unregister(this);
             },
             _setListeners: function(){
                 var that = this;
@@ -9417,8 +9424,7 @@ To change the progress bar background color:
                     that._switchTemplate('wait-for-connection');
                 };
                 this.querySelector('#close-button').onclick = function(){
-                    that.terminal.destroy();
-                    that.conn.send(that, CLOSE_TERMINAL);
+                    that._closeTerminal();
                     that._switchTemplate('connect-form');
                 };
                 this.querySelector('#copy-button').onclick = function(){
@@ -9495,6 +9501,14 @@ To change the progress bar background color:
                     that.conn.send(that, WRITE_TERMINAL_DATA, {'d': data});
                 });
                 this.terminal.open(this.querySelector('#terminal-wrapper'));
+                this._isOpen = true;
+            },
+            _closeTerminal: function(){
+                if(this._isOpen){
+                    this.terminal.destroy();
+                    this.conn.send(this, CLOSE_TERMINAL);
+                    this._isOpen = false;
+                }
             },
             _writeToTerminalFromRemote: function(data){
                 if(this.isRecording){
