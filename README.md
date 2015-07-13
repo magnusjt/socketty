@@ -4,7 +4,7 @@ SSH Terminal over websockets using:
 * ratchet - Websockets with PHP, and async IO
 * phpseclib - Pure PHP SSH client
 * term.js - Terminal emulation in the browser
-* Polymer - Wrapping the browser client in a custom tag using web components, like this: <socketty-terminal></socketty-terminal>
+* Polymer - Wrapping the browser client in a custom tag using web components, like this: `<socketty-terminal></socketty-terminal>`
   NB! Web components are not supported in all browser yet, so Polymer uses a polyfill. However, don't expect good results
   from this project using anything other than Chrome or Opera.
 
@@ -22,7 +22,7 @@ Here you can customize:
 * Allowed hosts
 * Logging - The project uses the psr LoggerInterface, so anything goes (Monolog is a nice option)
 
-As for the frontend, you need to use the custom web component <socketty-terminal> (see ./client/index.html for an example) In order to use this component,
+As for the frontend, you need to use the custom web component `<socketty-terminal>` (see ./client/index.html for an example) In order to use this component,
 you also need:
 
 * Polymer (webcomponents.js) - The web component library from google. The DOM type should be 'shady'
