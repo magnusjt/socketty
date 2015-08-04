@@ -5,61 +5,40 @@
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+        <link rel="stylesheet" href="css/socketty.css">
 
-        <script src="bower_components/webcomponentsjs/webcomponents.js"></script>
-        <script src="bower_components/jquery/dist/jquery.js"></script>
-        <script src="bower_components/bootstrap/dist/js/bootstrap.js"></script>
-        <script src="bower_components/moment/moment.js"></script>
-        <script src="bower_components/term.js/src/term.js"></script>
-
-        <script>
-            window.Polymer = window.Polymer || {};
-            window.Polymer.dom = 'shady';
-        </script>
-
-        <link rel="import" href="elements/elements.html">
+        <script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
 
         <style>
+           .socketty-wrapper{
+               border: 1px solid #eee;
+               box-shadow: 2px 2px 2px 1px #888888;
+               margin-bottom: 10px;
+            }
             body{
-                margin: 0;
-                padding: 0;
                 margin-bottom: 150px;
-            }
-            .terminal {
-                border: #000 solid 5px;
-                font-family: "DejaVu Sans Mono", "Liberation Mono", monospace;
-                font-size: 11px;
-                color: #f0f0f0;
-                background: #000;
-            }
-            .terminal-cursor {
-                color: #000;
-                background: #f0f0f0;
-            }
-            .socketty-wrapper{
-                border-bottom: 1px solid #aaa;
             }
         </style>
     </head>
     <body>
-        <div id="terminals">
-            <div class="socketty-wrapper">
-                <socketty-terminal username="vagrant" ip="127.0.0.1"></socketty-terminal>
-            </div>
-        </div>
-        <br />
-        <div style="text-align: center;">
-            <div class="form-group">
-                <button class="btn btn-large btn-success" id="another">Another!</button>
+        <div class="container-fluid">
+            <h3>Terminal demo</h3>
+            <div id="terminals"></div>
+            <br />
+            <div style="text-align: center;" class="form-inline">
+                <select class="form-control" id="nodes">
+                    <option value="" selected>Custom</option>
+                    <optgroup label="Testy test">
+                        <option value="127.0.0.1">vagrant</option>
+                    </optgroup>
+                </select>
+                <button role="button" class="btn btn-success" id="another">
+                    <span class="glyphicon glyphicon-open"></span> New terminal
+                </button>
             </div>
         </div>
     </body>
-    <script>
-        $("#another").click(function(){
-            $("#terminals").append("<div class='socketty-wrapper'>" +
-                                        "<socketty-terminal></socketty-terminal>" +
-                                    "</div>");
-        });
-    </script>
+    <script src="dist/app.js"></script>
 </html>

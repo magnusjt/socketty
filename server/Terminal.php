@@ -1,7 +1,7 @@
 <?php
 namespace Socketty;
 
-require('Net/SSH2.php');
+use phpseclib\Net\SSH2;
 
 class Terminal{
     private $id;
@@ -12,7 +12,7 @@ class Terminal{
     public function __construct($ip, $username, $password, $id){
         $this->id = $id;
         $this->ip = $ip;
-        $this->ssh = new \Net_SSH2($ip);
+        $this->ssh = new SSH2($ip);
         $this->ssh->setTimeout(5);
 
         if(!$this->ssh->login($username, $password)){
@@ -48,7 +48,7 @@ class Terminal{
     }
 
     /**
-     * NB: This is a modified version of Net_SSH::read without the locking (the expect functionality)
+     * NB: This is a modified version of SSH2::read without the locking (the expect functionality)
      *     Here we just want to read whatever we can and return.
      *
      *
@@ -59,11 +59,11 @@ class Terminal{
         $this->ssh->curTimeout = $this->ssh->timeout;
         $this->ssh->is_timeout = false;
 
-        if (!($this->ssh->bitmap & NET_SSH2_MASK_LOGIN)) {
+        if (!($this->ssh->bitmap & SSH2::MASK_LOGIN)) {
             throw new \Exception('Read not allowed before login');
         }
 
-        if (!($this->ssh->bitmap & NET_SSH2_MASK_SHELL) && !$this->ssh->_initShell()) {
+        if (!($this->ssh->bitmap & SSH2::MASK_SHELL) && !$this->ssh->_initShell()) {
             throw new \Exception('Unable to initiate an interactive shell session');
         }
 

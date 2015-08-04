@@ -10,8 +10,6 @@ use \Socketty\ErrorHandler;
 use \Symfony\Component\HttpFoundation\Session\Storage\Handler\MemcachedSessionHandler;
 
 ErrorHandler::setErrorHandler();
-
-set_include_path(get_include_path() . PATH_SEPARATOR . __DIR__ . '/lib/phpseclib0.3.10');
 date_default_timezone_set('Europe/Oslo');
 
 $loop = LoopFactory::create();

@@ -1,0 +1,28 @@
+.socketty-wrapper{
+    padding: 15px;
+}
+.socketty-form{
+    padding-bottom: 10px;
+}
+.socketty-paste-textarea{
+    min-height: 200px;
+    font-size: small;
+}
+.socketty-status{
+    padding: 3px 10px;
+    display: table-cell;
+    border-collapse: collapse;
+    border: 1px #000 solid;
+    border-bottom: none;
+}
+.terminal {
+    border: 5px #000 solid;
+    font-family: "DejaVu Sans Mono", "Liberation Mono", monospace;
+    font-size: 11px;
+    color: #f0f0f0;
+    background: #000;
+}
+.terminal-cursor {
+    color: #000;
+    background: #f0f0f0;
+}
