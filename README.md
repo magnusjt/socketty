@@ -4,9 +4,7 @@ SSH Terminal over websockets using:
 * ratchet - Websockets with PHP, and async IO
 * phpseclib - Pure PHP SSH client
 * term.js - Terminal emulation in the browser
-* Polymer - Wrapping the browser client in a custom tag using web components, like this: `<socketty-terminal></socketty-terminal>`
-  NB! Web components are not supported in all browser yet, so Polymer uses a polyfill. However, don't expect good results
-  from this project using anything other than Chrome or Opera.
+* reactjs - For the rest of the UI
 
 ### Usage
 
@@ -22,43 +20,25 @@ Here you can customize:
 * Allowed hosts
 * Logging - The project uses the psr LoggerInterface, so anything goes (Monolog is a nice option)
 
-As for the frontend, you need to use the custom web component `<socketty-terminal>` (see ./client/index.html for an example) In order to use this component,
-you also need:
+As for the frontend, you need to use the reactjs component in  `./client/js/Socketty.jsx` (see ./client/index.html for an example) In order to use this component,
+you need to require it and compile with browserify or similar. See the gulpfile in this project, and the example app in `./client/app.js`
 
-* Polymer (webcomponents.js) - The web component library from google. The DOM type should be 'shady'
-* jQuery - Dependency for bootstrap
-* Bootstrap - For styling
-* moment.js - For nice time formatting in javascript
-
-The custom component is loaded with an HTML import:
-
-````
-<link rel="import" href="elements/elements.html">
-````
-
-Alternatively, you may use the "vulcanized" version which include the web component dependencies (found here: ./dist/elements.vulcanized.html)
-
-The <socketty-terminal> tag has a bunch of attributes you can specify (just like normal HTML tag attributes):
+The SockettyTerminal component has some props you can specify:
 
 * url:         - The URL which will be used for accessing the web socket server {type: String, value: 'wss://localhost:5678'}
 * ip:          - The default SSH IP {type: String, value: ''}
 * username:    - The default SSH username {type: String, value: ''}
 * cols:        - Number of columns in the terminal (term.js) {type: Number, value: 120}
 * rows:        - Number of rows in the terminal (term.js) {type: Number, value: 30}
-* screenKeys:  - (term.js) {type: Boolean, value: true}
+* screenKeys:  - (term.js) {type: Boolean, value: false}
 * useStyle:    - (term.js) {type: Boolean, value: false}
 * cursorBlink: - (term.js) {type: Boolean, value: true}
 * debug:       - (term.js) {type: Boolean, value: false}
-* isRecording: - Whether to record terminal data (used when copying the terminal content) {type: Boolean, value: true}
+* record:      - Whether to record terminal data (used when downloading terminal content to file) {type: Boolean, value: true}
 
 ### Development
 
-* Install frontend dependencies with `npm run deps`.
-  This will install grunt, bower, and install node modules and bower components.
-  Alternatively:
- * `npm install`
- * `bower install`
- * `grunt copy_bower`
+* Install frontend dependencies with `npm install`.
 * Install backend dependencies with `composer install`
 * Copy and rename a Vagrantfile and vagrant_bootstrap.sh file
 * Start virtual server with `vagrant up`
@@ -73,5 +53,3 @@ In order to have secure web sockets, the vagrant install includes haproxy which 
 ### TODO:
 
 * Currently phpseclib is blocking while doing SSH login. Need to circumvent this somehow.
-* Possibly make the frontend stuff easier for others to use. Web components is definitely not the right choice
-  for everybody.
