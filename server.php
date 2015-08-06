@@ -1,13 +1,16 @@
 <?php
 require __DIR__ . '/vendor/autoload.php';
 
-use \Ratchet\Session\SessionProvider;
-use \React\EventLoop\Factory as LoopFactory;
+use Ratchet\Session\SessionProvider;
+use React\EventLoop\Factory as LoopFactory;
 use Socketty\BasicAuthenticator;
 use Socketty\BasicAuthorizer;
-use \Socketty\Socketty;
-use \Socketty\ErrorHandler;
-use \Symfony\Component\HttpFoundation\Session\Storage\Handler\MemcachedSessionHandler;
+use Socketty\ClientFactory;
+use Socketty\CommandSpawner;
+use Socketty\Socketty;
+use Socketty\ErrorHandler;
+use Socketty\TerminalFactory;
+use Symfony\Component\HttpFoundation\Session\Storage\Handler\MemcachedSessionHandler;
 
 ErrorHandler::setErrorHandler();
 date_default_timezone_set('Europe/Oslo');
@@ -15,11 +18,21 @@ date_default_timezone_set('Europe/Oslo');
 $loop = LoopFactory::create();
 $app = new \Ratchet\App('localhost', 8080, '127.0.0.1', $loop);
 
-$logger = new Monolog\Logger('socketty', array(new \Monolog\Handler\StreamHandler('php://stdout', \Psr\Log\LogLevel::INFO)));
+$handler = new \Monolog\Handler\StreamHandler('php://stdout', \Psr\Log\LogLevel::INFO);
+$processor = new \Monolog\Processor\MemoryUsageProcessor();
+$logger = new Monolog\Logger('socketty', array($handler), array($processor));
 
 $authenticator = new BasicAuthenticator('username');
-$authorizer = new BasicAuthorizer(array('127.0.0.1'));
-$socketty = new Socketty($logger, $loop, $authenticator, $authorizer);
+$authorizer = new BasicAuthorizer();
+$enabledCommands = [
+    'ssh',
+    'top',
+    'ping'
+];
+$spawner = new CommandSpawner($enabledCommands);
+$terminalFactory = new TerminalFactory($loop, $spawner);
+$clientFactory = new ClientFactory($loop, $logger, $terminalFactory, $authorizer);
+$socketty = new Socketty($logger, $loop, $clientFactory, $authenticator);
 
 $memcached = new Memcached();
 $memcached->addServer('localhost', 11211);

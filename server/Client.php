@@ -38,16 +38,21 @@ class Client{
     /** @var Terminal[] */
     private $terminals;
 
+    /** @var  TerminalFactory */
+    private $terminalFactory;
+
     /** @var AuthorizerInterface  */
     private $authorizer;
 
     public function __construct(LoggerInterface $logger,
                                 ConnectionInterface $conn,
                                 LoopInterface $loop,
+                                TerminalFactory $terminalFactory,
                                 AuthorizerInterface $authorizer = null){
         $this->logger = $logger;
         $this->conn = $conn;
         $this->loop = $loop;
+        $this->terminalFactory = $terminalFactory;
         $this->authorizer = $authorizer;
         $this->terminals = new \SplObjectStorage();
 
@@ -88,12 +93,13 @@ class Client{
     public function handleMessage($id, $type, $value){
         switch($type){
             case self::CREATE_TERMINAL:
-                $this->createTerminal($id, $value['ip'], $value['username'], $value['password']);
+                $this->createTerminal($id, $value['cmd'], $value['args']);
                 break;
             case self::WRITE_TERMINAL_DATA:
                 $this->writeTerminalData($id, $value['d']);
                 break;
             case self::CLOSE_TERMINAL:
+                $this->logger->info('Received close request');
                 $this->closeTerminalById($id);
                 break;
             default:
@@ -108,12 +114,10 @@ class Client{
      * @param Terminal $terminal
      */
     private function closeTerminal(Terminal $terminal){
-        $this->logger->info('Closing terminal to IP ' . $terminal->getIp());
+        $this->logger->info('Closing terminal');
         $id = $terminal->getId();
 
         $this->terminals->detach($terminal);
-
-        $this->loop->removeReadStream($terminal->getStream());
 
         $terminal->close();
 
@@ -124,16 +128,35 @@ class Client{
      * Create a new terminal and attach it to the loop
      *
      * @param $id
-     * @param $ip
-     * @param $username
-     * @param $password
+     * @param $cmd
+     * @param $args
      */
-    private function createTerminal($id, $ip, $username, $password){
-        $this->logger->info('Creating new terminal to IP ' . $ip);
+    private function createTerminal($id, $cmd, $args){
+        $this->logger->info('Creating new terminal with command ' . $cmd . ' ' . $args);
 
-        if($this->authorizer !== null and !$this->authorizer->check($this->session, $ip, $username)){
-            $this->logger->error('Terminal could not be created because the user was not authorized for this IP');
-            $this->send($id, self::CREATE_TERMINAL_FAILURE, array('msg' => 'Not authorized for that ip'));
+        if(strlen($cmd) == 0){
+            $this->logger->error('Terminal could not be created because command was not provided');
+            $this->send($id, self::CREATE_TERMINAL_FAILURE, array('msg' => 'No command provided'));
+            return;
+        }
+
+        if($this->authorizer !== null){
+            $authorizeResult = $this->authorizer->check($this->session, $cmd, $args);
+            if($authorizeResult !== true){
+                $msg = 'Not authorized for this command and arguments';
+                if(is_string($authorizeResult)){
+                    $msg = $authorizeResult;
+                }
+
+                $this->logger->error('Terminal could not be created because: ' . $msg);
+                $this->send($id, self::CREATE_TERMINAL_FAILURE, array('msg' => $msg));
+                return;
+            }
+        }
+
+        if($this->authorizer !== null and !$this->authorizer->check($this->session, $cmd, $args)){
+            $this->logger->error('Terminal could not be created because the user was not authorized for this command');
+            $this->send($id, self::CREATE_TERMINAL_FAILURE, array('msg' => 'Not authorized for that cmd and args'));
             return;
         }
 
@@ -143,24 +166,25 @@ class Client{
             return;
         }
 
+        $onData = function($data) use($id){
+            $this->sendTerminalUpdate($id, $data);
+        };
+        $onExit = function($exitCode, $termSignal) use($id){
+            $this->logger->info('Terminal terminated ('.$exitCode .':'.$termSignal.') closing...');
+            $this->closeTerminalById($id);
+        };
+
         try{
-            $terminal = new Terminal($ip, $username, $password, $id);
+            $terminal = $this->terminalFactory->getTerminal($id, $cmd, $args, $onData, $onExit);
         }catch(\Exception $e){
             $this->logger->error('Terminal could not be created', array('exception' => $e));
-            $this->send($id, self::CREATE_TERMINAL_FAILURE, array('msg' => 'Could not connect, ' . $e->getMessage()));
+            $this->send($id, self::CREATE_TERMINAL_FAILURE, array('msg' => 'Terminal not created: ' . $e->getMessage()));
             return;
         }
 
         $this->terminals->attach($terminal);
 
         $this->send($id, self::CREATE_TERMINAL_SUCCESS);
-
-        $this->loop->addReadStream($terminal->getStream(), function() use ($terminal){
-            $this->sendTerminalUpdate($terminal);
-        });
-
-        // Send initial terminal data
-        $this->sendTerminalUpdate($terminal);
     }
 
     /**
@@ -201,21 +225,10 @@ class Client{
     /**
      * Read data from the terminal and send it to the client
      *
-     * @param Terminal $terminal
+     * @param $id int
+     * @param $data string
      */
-    private function sendTerminalUpdate(Terminal $terminal){
-        $id = $terminal->getId();
-
-        try{
-            $data = $terminal->read();
-        }catch(\Exception $e){
-            $this->logger->error('Terminal read failure, closing terminal', array('exception' => $e));
-
-            $this->send($id, self::READ_TERMINAL_DATA_FAILURE, array('msg' => $e->getMessage()));
-            $this->closeTerminal($terminal);
-            return;
-        }
-
+    private function sendTerminalUpdate($id, $data){
         $this->send($id, self::READ_TERMINAL_DATA, array('d' => $data));
     }
 

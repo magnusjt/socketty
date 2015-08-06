@@ -1,11 +1,11 @@
 .socketty-wrapper{
-    padding: 15px;
+    padding: 0;
 }
 .socketty-form{
     padding-bottom: 10px;
 }
 .socketty-paste-textarea{
-    min-height: 200px;
+    min-height: 300px;
     font-size: small;
 }
 .socketty-status{
@@ -21,6 +21,7 @@
     font-size: 11px;
     color: #f0f0f0;
     background: #000;
+    margin-bottom: 5px;
 }
 .terminal-cursor {
     color: #000;

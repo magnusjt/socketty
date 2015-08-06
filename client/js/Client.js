@@ -52,15 +52,14 @@ export default class Client extends EventEmitter{
             this._handleMessage(type, value);
         });
     }
-    open(ip, username, password){
+    open(cmd, args){
         if(this.terminalIsOpen){
             this.close();
         }
 
         this.conn.send(this.id, CREATE_TERMINAL, {
-            'ip': ip,
-            'username': username,
-            'password': password
+            'cmd': cmd,
+            'args': args
         });
     }
     send(data){

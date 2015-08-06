@@ -5,9 +5,9 @@
     "license": "MIT",
     "type": "project",
     "require": {
-        "cboden/ratchet": "*",
+        "cboden/ratchet": "^0.3.3",
 		"psr/log": "1.0.0",
-        "phpseclib/phpseclib": "^2.0"
+        "react/react": "^0.4.2"
     },
     "require-dev": {
         "phpunit/phpunit": "4.2.*",
