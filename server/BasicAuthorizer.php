@@ -16,7 +16,7 @@ class BasicAuthorizer implements AuthorizerInterface{
         return 'You are not authorized for this command';
     }
 
-        protected function validateSsh($args){
+    protected function validateSsh($args){
         if(1 !== preg_match('/^\w+\@[\w\.:]+$/', $args)){
             return 'Args must be of the form user@host';
         }

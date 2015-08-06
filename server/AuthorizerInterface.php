@@ -6,10 +6,10 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
 interface AuthorizerInterface{
     /**
      * @param $session  SessionInterface|null
-     * @param $ip       string
-     * @param $username string
+     * @param $cmd      string
+     * @param $args     string
      *
      * @return bool     true if authorized, false if not
      */
-    public function check(SessionInterface $session = null, $ip, $username);
+    public function check(SessionInterface $session = null, $cmd, $args);
 }
