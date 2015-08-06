@@ -8,11 +8,9 @@ use Socketty\BasicAuthorizer;
 use Socketty\ClientFactory;
 use Socketty\CommandSpawner;
 use Socketty\Socketty;
-use Socketty\ErrorHandler;
 use Socketty\TerminalFactory;
 use Symfony\Component\HttpFoundation\Session\Storage\Handler\MemcachedSessionHandler;
 
-ErrorHandler::setErrorHandler();
 date_default_timezone_set('Europe/Oslo');
 
 $loop = LoopFactory::create();
