@@ -154,12 +154,6 @@ class Client{
             }
         }
 
-        if($this->authorizer !== null and !$this->authorizer->check($this->session, $cmd, $args)){
-            $this->logger->error('Terminal could not be created because the user was not authorized for this command');
-            $this->send($id, self::CREATE_TERMINAL_FAILURE, array('msg' => 'Not authorized for that cmd and args'));
-            return;
-        }
-
         if(false !== $this->getTerminalById($id)){
             $this->logger->error('Could not create terminal because terminal id already exists');
             $this->send($id, self::CREATE_TERMINAL_FAILURE, array('msg' => 'Could not create terminal because terminal id already exists'));
