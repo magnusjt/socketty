@@ -5,12 +5,9 @@
  */
 require(__DIR__ . '/../vendor/autoload.php');
 
-use \Socketty\ErrorHandler;
 use \Symfony\Component\HttpFoundation\Session\Session;
 use \Symfony\Component\HttpFoundation\Session\Storage\Handler\MemcachedSessionHandler;
 use \Symfony\Component\HttpFoundation\Session\Storage\NativeSessionStorage;
-
-ErrorHandler::setErrorHandler();
 
 try{
     $memcached = new Memcached();

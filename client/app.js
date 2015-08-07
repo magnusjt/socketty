@@ -7,16 +7,19 @@ $(document).ready(function(){
 
         var component = React.createElement(SockettyTerminal, {
             url: 'wss://localhost:5678',
-            ip: ip,
-            username: 'vagrant',
+            cmd: 'ssh',
+            args: 'vagrant@' + ip,
             debug: true
         });
 
         var $wrapper = $(
             "<div class='socketty-wrapper'>" +
-                "<button role='button' class='btn btn-danger btn-sm pull-right remove'>" +
-                    "<span class='glyphicon glyphicon-remove'></span> Remove" +
-                "</button>" +
+                "<div>" +
+                    "<button role='button' class='btn btn-danger btn-sm pull-right remove'>" +
+                    "<span class='glyphicon glyphicon-remove'></span> Close" +
+                    "</button>" +
+                    "<div class='clearfix'></div>" +
+                "</div>" +
             "</div>"
         );
 

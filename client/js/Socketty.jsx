@@ -8,8 +8,8 @@ var SockettyTerminal = React.createClass({
     getDefaultProps(){
         return {
             url:         'wss://localhost:5678',
-            ip:          '',
-            username:    '',
+            cmd:         '',
+            args:        '',
             cols:        120,
             rows:        30,
             screenKeys:  false,
@@ -111,9 +111,9 @@ var SockettyTerminal = React.createClass({
         this.term.destroy();
         this.termIsOpen = false;
     },
-    open(ip, username, password){
+    open(ip, cmd, args){
         this.setState({connectionState: 'waiting'});
-        this.client.open(ip, username, password);
+        this.client.open(ip, cmd, args);
     },
     download(){
         saveData(this.buffer, moment().format('YYYYMMDD_HHmmss_') + 'copy.txt');
@@ -136,9 +136,8 @@ var SockettyTerminal = React.createClass({
     },
     onClickConnect(){
         this.open(
-            React.findDOMNode(this.refs.ip).value,
-            React.findDOMNode(this.refs.username).value,
-            React.findDOMNode(this.refs.password).value
+            React.findDOMNode(this.refs.cmd).value,
+            React.findDOMNode(this.refs.args).value
         );
     },
     render(){
@@ -146,14 +145,6 @@ var SockettyTerminal = React.createClass({
             <div>
                 <div className="row">
                     <div className="col-lg-7">
-                        <div className="form-inline socketty-form">
-                            <input type="text" className="form-control input-sm" placeholder="IP" defaultValue={this.props.ip} ref="ip" />
-                            <input type="text" className="form-control input-sm" placeholder="Username" defaultValue={this.props.username} ref="username" />
-                            <input type="password" className="form-control input-sm" placeholder="Password" ref="password" />
-                            <button id="connect-button" className="btn btn-sm btn-default" onClick={this.onClickConnect}>
-                                <span className="glyphicon glyphicon-console"></span> Connect
-                            </button>
-                        </div>
                         <div>
                             <Status type={this.state.connStatus.type} msg={this.state.connStatus.msg} />
                             <Status type={this.state.authStatus.type} msg={this.state.authStatus.msg} />
@@ -166,6 +157,13 @@ var SockettyTerminal = React.createClass({
                         <div ref="terminal"></div>
                     </div>
                     <div className="col-lg-5">
+                        <div className="form-inline socketty-form">
+                            <input type="text" className="form-control input-sm" placeholder="Ex. ssh" defaultValue={this.props.cmd} ref="cmd" />
+                            <input type="text" className="form-control input-sm" placeholder="Ex. user@host" defaultValue={this.props.args} ref="args" />
+                            <button id="connect-button" className="btn btn-sm btn-default" onClick={this.onClickConnect}>
+                                <span className="glyphicon glyphicon-console"></span> Open
+                            </button>
+                        </div>
                         <div className="form-group">
                             <textarea className="form-control socketty-paste-textarea" ref="pastearea"></textarea>
                             <button className="btn btn-default btn-sm" onClick={this.paste}>

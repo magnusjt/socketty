@@ -7,20 +7,29 @@ use \Ratchet\MessageComponentInterface;
 use \React\EventLoop\LoopInterface;
 
 class Socketty implements MessageComponentInterface{
-    private $logger;
-    private $loop;
-    private $authenticator;
-    private $authorizer;
-    private $clients;
+    /** @var LoggerInterface */
+    protected $logger;
+
+    /** @var LoopInterface  */
+    protected $loop;
+
+    /** @var  ClientFactory */
+    protected $clientFactory;
+
+    /** @var AuthenticatorInterface  */
+    protected $authenticator;
+
+    /** @var \SplObjectStorage  */
+    protected $clients;
 
     public function __construct(LoggerInterface $logger,
                                 LoopInterface $loop,
-                                AuthenticatorInterface $authenticator = null,
-                                AuthorizerInterface $authorizer = null){
+                                ClientFactory $clientFactory,
+                                AuthenticatorInterface $authenticator = null){
         $this->logger = $logger;
         $this->loop = $loop;
+        $this->clientFactory = $clientFactory;
         $this->authenticator = $authenticator;
-        $this->authorizer = $authorizer;
         $this->clients = new \SplObjectStorage();
     }
 
@@ -63,7 +72,7 @@ class Socketty implements MessageComponentInterface{
            or $this->authenticator->check($conn->Session)
         ){
             $this->logger->info('Authentication successful');
-            $this->clients->attach(new Client($this->logger, $conn, $this->loop, $this->authorizer));
+            $this->clients->attach($this->clientFactory->getClient($conn));
             $conn->send('auth_success');
         }else{
             $this->logger->info('Authentication failed');
