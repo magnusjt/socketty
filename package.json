@@ -18,6 +18,11 @@
   "bugs": {
     "url": "https://github.com/magnusjt/socketty/issues"
   },
+  "browserify": {
+    "transform": [
+      ["babelify", {"experimental": true}]
+    ]
+  },
   "homepage": "https://github.com/magnusjt/socketty",
   "devDependencies": {
     "babelify": "^6.1.3",
