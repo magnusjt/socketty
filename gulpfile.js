@@ -11,6 +11,7 @@ var merge = require('utils-merge');
 var rename = require('gulp-rename');
 var uglify = require('gulp-uglify');
 var sourcemaps = require('gulp-sourcemaps');
+var less = require('gulp-less');
 
 var gutil = require('gulp-util');
 var chalk = require('chalk');
@@ -36,7 +37,7 @@ function logError(err){
     );
 }
 
-function bundleDev(bundler){
+function bundleApp(bundler){
     return bundler.bundle()
         .on('error', logError)
         .pipe(source(targetFileName))
@@ -49,33 +50,29 @@ function bundleDev(bundler){
         .pipe(gulp.dest(distFilePath))
 }
 
-function bundleDist(bundler){
-    return bundler.bundle()
-        .on('error', logError)
-        .pipe(source(targetFileName))
-        .pipe(buffer())
-        .pipe(rename(targetFileNameMin))
-        .pipe(uglify())
-        .pipe(gulp.dest(distFilePath))
-}
-
 gulp.task('watchify', function () {
     var args = merge(watchify.args, {debug: true});
-    var bundler = watchify(browserify(appFilePath, args)).transform(babelify.configure(babelifyOpts), browserifyTransformOpts);
-    bundleDev(bundler);
+    var bundler = browserify(appFilePath, args);
+    bundler = watchify(bundler);
+    bundler.transform(babelify.configure(babelifyOpts), browserifyTransformOpts);
+    bundleApp(bundler);
 
     bundler.on('update', function (){
         gutil.log('Watchify updating...');
         var startTime = process.hrtime();
-        bundleDev(bundler);
+        bundleApp(bundler);
         gutil.log('Watchify complete in ' + prettyHrtime(process.hrtime(startTime)));
     })
 });
-gulp.task('browserify', function () {
-    var bundler = browserify(appFilePath, {debug: true}).transform(babelify.configure(babelifyOpts), browserifyTransformOpts);
-    return bundleDev(bundler)
+gulp.task('browserify', function (){
+    var bundler = browserify(appFilePath, {debug: true});
+    bundler.transform(babelify.configure(babelifyOpts), browserifyTransformOpts);
+    return bundleApp(bundler)
 });
-gulp.task('build', function () {
-    var bundler = browserify(appFilePath).transform(babelify.configure(babelifyOpts), browserifyTransformOpts);
-    return bundleDist(bundler);
+gulp.task('less', function(){
+    gulp.src('./client/less/socketty.less')
+        .pipe(sourcemaps.init())
+        .pipe(less())
+        .pipe(sourcemaps.write('.'))
+        .pipe(gulp.dest('./client/css'));
 });
