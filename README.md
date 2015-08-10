@@ -12,6 +12,8 @@ Uses the following tech:
 * reactjs - For the rest of the UI
 * python's pty module - For emulating a pty which php can interact with using normal pipes
 
+![alt tag](https://raw.github.com/magnusjt/socketty/master/ex.png)
+
 ### Usage
 
 The project consists of a PHP backend which manages the client connections, and a frontend which
