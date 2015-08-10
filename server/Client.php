@@ -93,7 +93,7 @@ class Client{
     public function handleMessage($id, $type, $value){
         switch($type){
             case self::CREATE_TERMINAL:
-                $this->createTerminal($id, $value['cmd'], $value['args']);
+                $this->createTerminal($id, $value['cmd']);
                 break;
             case self::WRITE_TERMINAL_DATA:
                 $this->writeTerminalData($id, $value['d']);
@@ -128,17 +128,20 @@ class Client{
      * Create a new terminal and attach it to the loop
      *
      * @param $id
-     * @param $cmd
-     * @param $args
+     * @param $cmdString
      */
-    private function createTerminal($id, $cmd, $args){
-        $this->logger->info('Creating new terminal with command ' . $cmd . ' ' . $args);
+    private function createTerminal($id, $cmdString){
+        $this->logger->info('Creating new terminal with command ' . $cmdString);
 
-        if(strlen($cmd) == 0){
+        if(strlen($cmdString) == 0){
             $this->logger->error('Terminal could not be created because command was not provided');
             $this->send($id, self::CREATE_TERMINAL_FAILURE, array('msg' => 'No command provided'));
             return;
         }
+
+        $parts = explode(' ', $cmdString);
+        $cmd = array_shift($parts);
+        $args = implode(' ', $parts);
 
         if($this->authorizer !== null){
             $authorizeResult = $this->authorizer->check($this->session, $cmd, $args);

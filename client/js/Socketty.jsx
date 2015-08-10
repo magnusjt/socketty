@@ -1,124 +1,208 @@
 var React = require('react');
-var termjs = require('term.js');
 var moment = require('moment');
-import Client from './Client.js';
+var _ = require('lodash');
+import {clientStore} from './ClientStore.js';
 import saveData from './SaveData.js';
+import * as Actions from './Actions.js';
 
-var SockettyTerminal = React.createClass({
+var Socketty = React.createClass({
     getDefaultProps(){
         return {
-            url:         'wss://localhost:5678',
-            cmd:         '',
-            args:        '',
-            cols:        120,
-            rows:        30,
-            screenKeys:  false,
-            useStyle:    false,
-            cursorBlink: true,
-            debug:       false,
-            record:      true
-        };
+            opts: []
+        }
     },
     getInitialState(){
         return {
-            connStatus: {msg: 'Disconnected', type: 'error'},
-            authStatus: {msg: 'Not authenticated', type: 'error'},
-            termStatus: {msg: 'Terminal closed', type: 'error'}
-        };
-    },
-    addMessage(msg, type){
-        if(this.props.debug){
-            msg = moment().format('HH:mm:ss') + ' ' + msg;
-            console.log(msg);
-            this.addMessageToTerminal(msg, type);
+            terminals: clientStore.getTerminals(),
+            selectedIndex: clientStore.getSelectedIndex(),
+            connStatus: clientStore.getConnStatus(),
+            authStatus: clientStore.getAuthStatus()
         }
-    },
-    addMessageToTerminal(msg, type){
-        var red = '31';
-        var green = '32';
-        var blue = '34';
-        var color = red;
-        if(type == 'error' || type == 'warning'){
-            color = red;
-        }else if(type == 'info'){
-            color = blue;
-        }else if(type == 'success'){
-            color = green;
-        }
-
-        var bold = '\x1b[1m';
-        var escapeStart = '\x1b['+color+'m' + bold;
-        var escapeEnd = '\x1b[m';
-
-        if(this.termIsOpen){
-            this.term.write(escapeStart + '>>> ' + msg + ' <<<' + escapeEnd + escapeEnd + '\r\n');
-        }
-    },
-    setConnStatus(status, type = 'info'){
-        this.addMessage(status, type);
-        this.setState({connStatus: {msg: status, type: type}});
-    },
-    setAuthStatus(status, type = 'info'){
-        this.addMessage(status, type);
-        this.setState({authStatus: {msg: status, type: type}});
-    },
-    setTermStatus(status, type = 'info'){
-        this.addMessage(status, type);
-        this.setState({termStatus: {msg: status, type: type}});
-    },
-    componentWillMount(){
-        this.termIsOpen = false;
-        this.buffer = '';
-        this.client = new Client(this.props.url);
-        this.term = new termjs.Terminal({
-            cols:        this.props.cols,
-            rows:        this.props.rows,
-            screenKeys:  this.props.screenKeys,
-            cursorBlink: this.props.cursorBlink,
-            debug:       this.props.debug
-        });
-
-        this.term.on('data', (data) => {this.client.send(data);});
-
-        if(this.client.conn.isConnected()){this.setConnStatus('Connected to server', 'success');}
-        if(this.client.conn.isAuthenticated()){this.setAuthStatus('Authenticated', 'success');}
-
-        this.client.on('connection_open', () => {this.setConnStatus('Connected to server', 'success');});
-        this.client.on('connection_lost', () => {this.setConnStatus('Disconnected from server', 'error');});
-        this.client.on('connection_error', () => {this.setConnStatus('Connection error', 'error');});
-        this.client.on('session_auth_failure', () => {this.setAuthStatus('Authentication failure', 'error');});
-        this.client.on('session_auth_success', () => {this.setAuthStatus('Authenticated', 'success');});
-        this.client.on('terminal_opened', () => {this.setTermStatus('Terminal open', 'success');});
-        this.client.on('terminal_open_error', (msg) => {this.setTermStatus(msg, 'error');});
-        this.client.on('terminal_closed', () => {this.setTermStatus('Terminal closed', 'info');});
-        this.client.on('terminal_close_error', (msg) => {this.setTermStatus(msg, 'error');});
-        this.client.on('terminal_rxdata_error', (msg) => {this.setTermStatus(msg, 'error');});
-        this.client.on('terminal_txdata_error', (msg) => {this.setTermStatus(msg, 'error');});
-        this.client.on('terminal_error', (msg) => {this.setTermStatus(msg, 'error');});
-        this.client.on('terminal_rxdata', (data) => {
-            this.term.write(data);
-            if(this.props.record){
-                this.buffer += data;
-            }
-        });
     },
     componentDidMount(){
-        this.term.open(React.findDOMNode(this.refs.terminal));
-        this.termIsOpen = true;
+        clientStore.addChangeListener(this.onChange);
+        clientStore.addConnEventListener(this.onConnEvent);
     },
     componentWillUnmount(){
-        this.client.close();
-        this.term.destroy();
-        this.termIsOpen = false;
+        clientStore.removeChangeListener(this.onChange);
+        clientStore.removeConnEventListener(this.onConnEvent);
     },
-    open(ip, cmd, args){
-        this.setState({connectionState: 'waiting'});
-        this.client.open(ip, cmd, args);
+    onChange(){
+        this.setState({
+            terminals: clientStore.getTerminals(),
+            selectedIndex: clientStore.getSelectedIndex()
+        });
     },
-    download(){
-        saveData(this.buffer, moment().format('YYYYMMDD_HHmmss_') + 'copy.txt');
+    onConnEvent(){
+        this.setState({
+            connStatus: clientStore.getConnStatus(),
+            authStatus: clientStore.getAuthStatus()
+        });
     },
-    paste(){
+    render(){
+        return (
+            <div>
+                <div className="row">
+                    <div className="col-lg-2 socketty-sidebar">
+                        <h4>Status</h4>
+                        <Status type={this.state.connStatus.type} msg={this.state.connStatus.msg} />
+                        <Status type={this.state.authStatus.type} msg={this.state.authStatus.msg} />
+                        <h4>Presets</h4>
+                        <Sidebar opts={this.props.opts} />
+                    </div>
+                    <div className="col-lg-10 socketty-main">
+                        <Tabs terminals={this.state.terminals} selectedIndex={this.state.selectedIndex} />
+                    </div>
+                </div>
+            </div>
+        );
+   }
+});
+export default Socketty;
+
+var Sidebar = React.createClass({
+    getDefaultProps(){
+        return {
+            opts: []
+        }
+    },
+    render(){
+        return (
+            <div className="socketty-sidebar-list">
+                {this.props.opts.map(function(opt){
+                    var i = 0;
+                    return (
+                        <ul key={opt.name}>
+                            <li>
+                                <h5>{opt.name}</h5>
+                                <ul>
+                                    {opt.list.map(function(item){
+                                        i++;
+                                        return <SidebarItem cmd={item.cmd} name={item.name} key={i} />
+                                    })}
+                                </ul>
+                            </li>
+                        </ul>
+                    );
+                })}
+            </div>
+        );
+    }
+});
+var SidebarItem = React.createClass({
+    onOpenNewTab(){
+        Actions.addTerminal(this.props.cmd, this.props.name);
+    },
+    render(){
+        return (
+            <li onClick={this.onOpenNewTab}>
+                {this.props.name.length > 0 ?
+                    <span>{this.props.name}</span>
+                :
+                    <span>{this.props.cmd}</span>
+                }
+            </li>
+        );
+    }
+});
+
+var Tabs = React.createClass({
+    getDefaultProps(){
+        return {
+            terminals: [],
+            selectedIndex: 0
+        }
+    },
+    onOpenNewTerminal(){
+        Actions.addTerminal();
+    },
+    render(){
+        var that = this;
+        return (
+            <div>
+                <nav className="navbar navbar-default socketty-navbar">
+                    <ul className="nav navbar-nav socketty-tabs">
+                        {this.props.terminals.map(function(terminal, i){
+                            if(that.props.terminals[i].destroyed){
+                                return null;
+                            }
+
+                            var selected = false;
+                            if(i == that.props.selectedIndex){
+                                selected = true;
+                            }
+
+                            return <TabItem index={i} name={terminal.name} selected={selected} key={i} />
+                        })}
+                        <li>
+                            <span onClick={this.onOpenNewTerminal} className="glyphicon glyphicon-plus socketty-tab-icon" title="Open a new tab"></span>
+                        </li>
+                    </ul>
+                </nav>
+                {this.props.terminals.map(function(terminal, i){
+                    var show = false;
+                    if(i == that.props.selectedIndex){
+                        show = true;
+                    }
+
+                    return <Terminal terminal={terminal} show={show} key={i} />
+                })}
+            </div>
+        );
+    }
+});
+var TabItem = React.createClass({
+    getDefaultProps(){
+        return {
+            selected: false,
+            name: 'Name',
+            index: 0
+        };
+    },
+    onSwitchTab(){
+        Actions.selectTerminal(this.props.index);
+    },
+    onRemoveTab(){
+        Actions.removeTerminal(this.props.index);
+    },
+    render(){
+        if(this.props.selected){
+            return (
+                <li className="active">
+                    <span className="socketty-tab-title">
+                        {this.props.name}
+                    </span>
+                    <span className="glyphicon glyphicon-remove socketty-tab-icon socketty-tab-remove" onClick={this.onRemoveTab} title="Close"></span>
+                </li>);
+        }else{
+            return (
+                <li>
+                    <span onClick={this.onSwitchTab} className="socketty-tab-title" title="Go to tab">
+                        {this.props.name}
+                    </span>
+                    <span className="glyphicon glyphicon-remove socketty-tab-icon socketty-tab-remove" onClick={this.onRemoveTab} title="Close"></span>
+                </li>);
+        }
+    }
+});
+
+var Terminal = React.createClass({
+    getDefaultProps(){
+        return {
+            terminal: {},
+            show: false
+        };
+    },
+    componentDidMount(){
+        this.props.terminal.term.open(React.findDOMNode(this.refs.terminal));
+    },
+    onConnect(){
+        this.props.terminal.open(React.findDOMNode(this.refs.cmd).value);
+    },
+    onDownload(){
+        saveData(this.props.terminal.buffer, moment().format('YYYYMMDD_HHmmss_') + 'copy.txt');
+    },
+    onPaste(){
         var pasteTextarea = React.findDOMNode(this.refs.pastearea);
         var text = pasteTextarea.value;
         var indexOfFirstNewline = text.indexOf("\n");
@@ -131,45 +215,39 @@ var SockettyTerminal = React.createClass({
             text = text.substr(indexOfFirstNewline+1);
         }
 
-        this.term.send(firstLine);
+        this.props.terminal.term.send(firstLine);
         pasteTextarea.value = text;
     },
-    onClickConnect(){
-        this.open(
-            React.findDOMNode(this.refs.cmd).value,
-            React.findDOMNode(this.refs.args).value
-        );
-    },
     render(){
+        if(this.props.terminal.destroyed){
+            return null;
+        }
+
+        var display = {display: 'none'};
+        if(this.props.show){
+            display = {display: 'block'};
+        }
+
         return (
-            <div>
-                <div className="row">
-                    <div className="col-lg-7">
-                        <div>
-                            <Status type={this.state.connStatus.type} msg={this.state.connStatus.msg} />
-                            <Status type={this.state.authStatus.type} msg={this.state.authStatus.msg} />
-                            <Status type={this.state.termStatus.type} msg={this.state.termStatus.msg} />
-                        </div>
-                    </div>
-                </div>
+            <div style={display}>
                 <div className="row">
                     <div className="col-lg-7">
                         <div ref="terminal"></div>
                     </div>
                     <div className="col-lg-5">
+                        <Status type={this.props.terminal.status.type} msg={this.props.terminal.status.msg} />
                         <div className="form-inline socketty-form">
-                            <input type="text" className="form-control input-sm" placeholder="Ex. ssh" defaultValue={this.props.cmd} ref="cmd" />
-                            <input type="text" className="form-control input-sm" placeholder="Ex. user@host" defaultValue={this.props.args} ref="args" />
-                            <button id="connect-button" className="btn btn-sm btn-default" onClick={this.onClickConnect}>
+                            <input type="text" className="form-control input-sm" placeholder="Command (ex. ssh user@host)" defaultValue={this.props.terminal.defaultCmd} ref="cmd" />
+                            <button id="connect-button" className="btn btn-sm btn-default" onClick={this.onConnect}>
                                 <span className="glyphicon glyphicon-console"></span> Open
                             </button>
                         </div>
                         <div className="form-group">
                             <textarea className="form-control socketty-paste-textarea" ref="pastearea"></textarea>
-                            <button className="btn btn-default btn-sm" onClick={this.paste}>
+                            <button className="btn btn-default btn-sm" onClick={this.onPaste}>
                                 <span className="glyphicon glyphicon-paste"></span> Paste first line
                             </button>
-                            <button className="btn btn-default btn-sm" onClick={this.download}>
+                            <button className="btn btn-default btn-sm" onClick={this.onDownload}>
                                 <span className="glyphicon glyphicon-copy"></span> Download output
                             </button>
                         </div>
@@ -179,33 +257,15 @@ var SockettyTerminal = React.createClass({
         );
     }
 });
-export default SockettyTerminal;
 
 var Status = React.createClass({
    render(){
-       var className = '';
-       switch(this.props.type){
-           case 'info':
-               className = 'bg-info';
-               break;
-           case 'error':
-               className = 'bg-danger';
-               break;
-           case 'warning':
-               className = 'bg-warning';
-               break;
-           case 'success':
-               className = 'bg-success';
-               break;
-           default:
-               className = 'bg-info';
-               break;
-       }
-
-       className += ' socketty-status';
+        var classCircle = 'socketty-circle ' + this.props.type;
 
        return (
-            <span className={className}>{this.props.msg}</span>
+            <div className='socketty-status'>
+                <div className={classCircle}></div> {this.props.msg}
+            </div>
        );
    }
 });

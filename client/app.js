@@ -1,41 +1,24 @@
 var React = require('react');
-import SockettyTerminal from './js/Socketty.jsx';
+import Socketty from './js/Socketty.jsx';
+import * as Actions from './js/Actions.js';
 
-$(document).ready(function(){
-    $("#another").click(function(){
-        var ip = $("#nodes").val();
+Actions.connect('wss://localhost:5678');
 
-        var component = React.createElement(SockettyTerminal, {
-            url: 'wss://localhost:5678',
-            cmd: 'ssh',
-            args: 'vagrant@' + ip,
-            debug: true
-        });
+var opts = [
+    {
+        name: 'SSH',
+        list: [
+            {cmd: 'ssh vagrant@127.0.0.1', 'name': 'Vagrant SSH'},
+            {cmd: 'ping 127.0.0.1', 'name': 'Ping localhost'}
+        ]
+    },
+    {
+        name: 'Stats',
+        list: [
+            {cmd: 'top', 'name': 'Top'}
+        ]
+    }
+];
 
-        var $wrapper = $(
-            "<div class='socketty-wrapper'>" +
-                "<div>" +
-                    "<button role='button' class='btn btn-danger btn-sm pull-right remove'>" +
-                    "<span class='glyphicon glyphicon-remove'></span> Close" +
-                    "</button>" +
-                    "<div class='clearfix'></div>" +
-                "</div>" +
-            "</div>"
-        );
-
-        var $element = $(
-            "<div class='mount-node'></div>"
-        );
-
-        $("#terminals").append($wrapper);
-        $wrapper.append($element);
-
-        React.render(component, $element[0]);
-    });
-
-    $("#terminals").on('click', '.remove', function(){
-        var $wrapper = $(this).parents('.socketty-wrapper');
-        React.unmountComponentAtNode($wrapper.children('.mount-node')[0]);
-        $wrapper.remove();
-    });
-});
+var component = React.createElement(Socketty, {opts});
+React.render(component, document.getElementById('app'));

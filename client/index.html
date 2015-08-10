@@ -4,39 +4,13 @@
         <meta charset="utf-8">
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
         <link rel="stylesheet" href="css/socketty.css">
-
-        <script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
-        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
-
-        <style>
-           .socketty-wrapper{
-               box-shadow: 2px 2px 2px 1px #888888;
-               margin-bottom: 10px;
-            }
-            body{
-                margin-bottom: 150px;
-            }
-        </style>
     </head>
     <body>
         <div class="container-fluid">
             <h3>Terminal demo</h3>
-            <div id="terminals"></div>
-            <br />
-            <div style="text-align: center;" class="form-inline">
-                <select class="form-control" id="nodes">
-                    <option value="" selected>Custom</option>
-                    <optgroup label="Testy test">
-                        <option value="127.0.0.1">vagrant</option>
-                    </optgroup>
-                </select>
-                <button role="button" class="btn btn-success" id="another">
-                    <span class="glyphicon glyphicon-open"></span> New terminal
-                </button>
-            </div>
+            <div id="app"></div>
         </div>
     </body>
     <script src="dist/app.js"></script>
