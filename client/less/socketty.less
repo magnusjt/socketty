@@ -1,0 +1,126 @@
+@import "../../node_modules/bootstrap/less/variables.less";
+@import "../../node_modules/bootstrap/less/mixins.less";
+
+.socketty-sidebar-list{
+  border: 1px solid #eee;
+  border-top: none;
+
+  ul{
+    margin: 0;
+    padding-left: 0;
+    list-style: none;
+  }
+
+  > ul > li{
+    > h5{
+      font-weight: bold;
+      border-bottom: 1px solid #eee;
+      border-top: 1px solid #eee;
+      margin: 0;
+      padding: 5px;
+      padding-left: 10px;
+    }
+
+    > ul{
+      margin-top: 5px;
+      margin-bottom: 5px;
+    }
+
+    > ul > li{
+      &:hover{
+        background: @dropdown-link-hover-bg;
+      }
+
+      color: @link-color;
+      padding-left: 10px;
+      padding-top: 2px;
+      padding-bottom: 2px;
+      cursor: pointer;
+    }
+  }
+}
+
+.socketty-form{
+  padding-bottom: 10px;
+}
+.socketty-paste-textarea{
+  min-height: 300px;
+  font-size: small;
+}
+.socketty-circle{
+  display: inline-block;
+  vertical-align: text-top;
+  border-radius: 50%;
+  width: @font-size-base;
+  height: @font-size-base;
+
+  &.error{
+    background: @btn-danger-bg;
+  }
+  &.info{
+    background: @btn-info-bg;
+  }
+  &.warning{
+    background: @btn-warning-bg;
+  }
+  &.success{
+    background: @btn-success-bg;
+  }
+}
+
+.socketty-status{
+  padding: 5px 0;
+}
+
+.socketty-navbar{
+  min-height: 20px;
+}
+.socketty-tabs{
+  > li{
+    border-right: 1px #eee solid;
+
+    background-color: @navbar-default-bg;
+    color: @navbar-default-link-color;
+
+    &.active{
+      background-color: #e7e7e7;
+      color: #555;
+    }
+
+    > .socketty-tab-title{
+      display: inline-block;
+      padding: 5px 15px;
+      cursor: pointer;
+
+      &:hover{
+        color: @link-color;
+      }
+    }
+    > .socketty-tab-icon{
+      cursor: pointer;
+      line-height: @line-height-base; // To have vertical align function properly
+      font-size: 12px; // 2px smaller than normal
+      padding: 6px 15px; // 1px extra padding at top and bottom
+
+      &:hover{
+        color: @link-color;
+      }
+    }
+    > .socketty-tab-remove{
+      padding-left: 0;
+    }
+  }
+}
+
+.terminal {
+  border: 5px #000 solid;
+  font-family: "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-size: 11px;
+  color: #f0f0f0;
+  background: #000;
+  margin-bottom: 5px;
+}
+.terminal-cursor {
+  color: #000;
+  background: #f0f0f0;
+}

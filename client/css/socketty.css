@@ -1,29 +1,106 @@
-.socketty-wrapper{
-    padding: 0;
+.socketty-sidebar-list {
+  border: 1px solid #eee;
+  border-top: none;
 }
-.socketty-form{
-    padding-bottom: 10px;
+.socketty-sidebar-list ul {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
 }
-.socketty-paste-textarea{
-    min-height: 300px;
-    font-size: small;
+.socketty-sidebar-list > ul > li > h5 {
+  font-weight: bold;
+  border-bottom: 1px solid #eee;
+  border-top: 1px solid #eee;
+  margin: 0;
+  padding: 5px;
+  padding-left: 10px;
 }
-.socketty-status{
-    padding: 3px 10px;
-    display: table-cell;
-    border-collapse: collapse;
-    border: 1px #000 solid;
-    border-bottom: none;
+.socketty-sidebar-list > ul > li > ul {
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+.socketty-sidebar-list > ul > li > ul > li {
+  color: #337ab7;
+  padding-left: 10px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  cursor: pointer;
+}
+.socketty-sidebar-list > ul > li > ul > li:hover {
+  background: #f5f5f5;
+}
+.socketty-form {
+  padding-bottom: 10px;
+}
+.socketty-paste-textarea {
+  min-height: 300px;
+  font-size: small;
+}
+.socketty-circle {
+  display: inline-block;
+  vertical-align: text-top;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+}
+.socketty-circle.error {
+  background: #d9534f;
+}
+.socketty-circle.info {
+  background: #5bc0de;
+}
+.socketty-circle.warning {
+  background: #f0ad4e;
+}
+.socketty-circle.success {
+  background: #5cb85c;
+}
+.socketty-status {
+  padding: 5px 0;
+}
+.socketty-navbar {
+  min-height: 20px;
+}
+.socketty-tabs > li {
+  border-right: 1px #eee solid;
+  background-color: #f8f8f8;
+  color: #777777;
+}
+.socketty-tabs > li.active {
+  background-color: #e7e7e7;
+  color: #555;
+}
+.socketty-tabs > li > .socketty-tab-title {
+  display: inline-block;
+  padding: 5px 15px;
+  cursor: pointer;
+}
+.socketty-tabs > li > .socketty-tab-title:hover {
+  color: #337ab7;
+}
+.socketty-tabs > li > .socketty-tab-icon {
+  cursor: pointer;
+  line-height: 1.42857143;
+  font-size: 12px;
+  padding: 6px 15px;
+}
+.socketty-tabs > li > .socketty-tab-icon:hover {
+  color: #337ab7;
+}
+.socketty-tabs > li > .socketty-tab-remove {
+  padding-left: 0;
 }
 .terminal {
-    border: 5px #000 solid;
-    font-family: "DejaVu Sans Mono", "Liberation Mono", monospace;
-    font-size: 11px;
-    color: #f0f0f0;
-    background: #000;
-    margin-bottom: 5px;
+  border: 5px #000 solid;
+  font-family: "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-size: 11px;
+  color: #f0f0f0;
+  background: #000;
+  margin-bottom: 5px;
 }
 .terminal-cursor {
-    color: #000;
-    background: #f0f0f0;
+  color: #000;
+  background: #f0f0f0;
 }
+
+/*# sourceMappingURL=socketty.css.map */
