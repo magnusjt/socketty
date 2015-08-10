@@ -27,7 +27,7 @@ Here you can customize:
 * Logging - The project uses the psr LoggerInterface, so anything goes (Monolog is a nice option)
 * Spawner - Generates a command string to be executed. Commands can be enabled and disabled here.
 
-As for the frontend, you need to use the reactjs component in  `./client/js/Socketty.jsx` (see ./client/index.html for an example) In order to use this component,
+As for the frontend, you need to use the reactjs component in `./client/js/Socketty.jsx`. In order to use this component,
 you need to require it and compile with browserify or similar. See the gulpfile in this project, and the example app in `./client/app.js`
 
 ### Development
