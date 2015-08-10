@@ -30,19 +30,6 @@ Here you can customize:
 As for the frontend, you need to use the reactjs component in  `./client/js/Socketty.jsx` (see ./client/index.html for an example) In order to use this component,
 you need to require it and compile with browserify or similar. See the gulpfile in this project, and the example app in `./client/app.js`
 
-The SockettyTerminal component has some props you can specify:
-
-* url:         - The URL which will be used for accessing the web socket server {type: String, value: 'wss://localhost:5678'}
-* cmd:         - The default command to spawn (ex. ssh) {type: String, value: ''}
-* args:        - The default arguments to the command {type: String, value: ''}
-* cols:        - Number of columns in the terminal (term.js) {type: Number, value: 120}
-* rows:        - Number of rows in the terminal (term.js) {type: Number, value: 30}
-* screenKeys:  - (term.js) {type: Boolean, value: false}
-* useStyle:    - (term.js) {type: Boolean, value: false}
-* cursorBlink: - (term.js) {type: Boolean, value: true}
-* debug:       - (term.js) {type: Boolean, value: false}
-* record:      - Whether to record terminal data (used when downloading terminal content to file) {type: Boolean, value: true}
-
 ### Development
 
 * Install frontend dependencies with `npm install`.
