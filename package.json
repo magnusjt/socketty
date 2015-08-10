@@ -20,7 +20,12 @@
   },
   "browserify": {
     "transform": [
-      ["babelify", {"experimental": true}]
+      [
+        "babelify",
+        {
+          "experimental": true
+        }
+      ]
     ]
   },
   "homepage": "https://github.com/magnusjt/socketty",
@@ -38,11 +43,15 @@
     "utils-merge": "^1.0.0",
     "vinyl-buffer": "^1.0.0",
     "vinyl-source-stream": "^1.1.0",
-    "watchify": "^3.3.1"
+    "watchify": "^3.3.1",
+    "gulp-less": "^3.0.3"
   },
   "dependencies": {
     "moment": "^2.10.6",
     "react": "^0.13.3",
-    "term.js": "0.0.5"
+    "term.js": "0.0.5",
+    "lodash": "^3.10.1",
+    "bootstrap": "^3.3.5",
+    "flux": "^2.0.3"
   }
 }
