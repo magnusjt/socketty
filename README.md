@@ -29,8 +29,39 @@ Here you can customize:
 * Logging - The project uses the psr LoggerInterface, so anything goes (Monolog is a nice option)
 * Spawner - Generates a command string to be executed. Commands can be enabled and disabled here.
 
-As for the frontend, you need to use the reactjs component in `./client/js/Socketty.jsx`. In order to use this component,
-you need to require it and compile with browserify or similar. See the gulpfile in this project, and the example app in `./client/app.js`
+Backend example:
+See `./server.php`
+
+Frontend:
+Install by adding the following to npm dependencies:
+`"socketty": "git://github.com/magnusjt/socketty.git#master"`
+
+Frontend example (needs to be compiled with browserify and babelify):
+````
+var Socketty = require('socketty');
+var domNodeId = 'app'; // ID of the dom node to open the app in
+var wssUrl = 'wss://localhost:5678'; // Websocket URL
+
+// Create some presets
+var opts = [
+    {
+        name: 'SSH',
+        open: true,
+        list: [
+            {cmd: 'ssh vagrant@127.0.0.1', 'name': 'Vagrant SSH'},
+        ]
+    },
+    {
+        name: 'Ping',
+        open: false,
+        list: [
+            {cmd: 'ping 127.0.0.1', 'name': 'Ping localhost'},
+        ]
+    }
+];
+
+Socketty.start(domNodeId, wssUrl, opts);
+````
 
 ### Development
 
