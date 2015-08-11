@@ -1,3 +1,27 @@
+/*
+Connection is a wrapper for a websocket.
+It handles the websocket events (open, close, error, message).
+This class most resembles the Socketty class on the server.
+
+open
+  emit open event
+
+close
+  emit close event
+  reconnect after some time, if reconnects are enabled
+
+error
+  emit error event
+
+message
+  Check if the message is related to authentication
+    If so, emit auth event and disable reconnects in the case where authentication failed
+  Decode the message (parse from json) and emit it in a data event
+
+send
+  Only continue if socket is connected and authenticated
+  Encode message and send it
+ */
 var EventEmitter = require('events').EventEmitter;
 
 export default class Connection extends EventEmitter{

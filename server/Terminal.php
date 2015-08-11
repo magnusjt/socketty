@@ -1,4 +1,20 @@
 <?php
+/*
+ * The Terminal class is responsible for managing a child process.
+ * It hooks into the standard pipes of the process in order to handle IO.
+ *
+ * Listen to the child process
+ *   onExit
+ *     Emit exit event
+ *
+ * Listen to stdout and stderr
+ *   onData
+ *     Emit the data
+ *
+ * close terminal
+ *   Remove all listeners on pipes and the process
+ *   If process is still running, terminate it
+ */
 namespace Socketty;
 
 use React\ChildProcess\Process;

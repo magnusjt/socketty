@@ -1,4 +1,23 @@
 <?php
+/*
+ * The main entry point for the server application is in this class.
+ * It responds to the four messages on the websocket protocol (open, close, error, message)
+ *
+ * open
+ *   Authenticate the user using the Authenticator interface
+ *   If not authenticated, stop here
+ *   If authenticated, create a new Client and associate it with the connection
+ *
+ * close
+ *   Remove the client and call close on it
+ *
+ * error
+ *   Close the connection. The closing procedure should still be done in the close method.
+ *
+ * message
+ *   Decode the message, and let the appropriate Client handle it
+ *
+ */
 namespace Socketty;
 
 use \Psr\Log\LoggerInterface;

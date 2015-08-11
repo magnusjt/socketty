@@ -1,3 +1,65 @@
+/*
+Terminal handles websocket messages related to a certain terminal.
+It resembles the Client class on the server.
+
+It also keeps an instance of the terminal emulator for the browser (termjs),
+and forwards messages to/from it and the server.
+
+The class is used to send three main messages to the server:
+
+open
+  If a terminal is open already, close it first
+  Request a new terminal from the server
+
+close
+  If terminal is closed already, stop here
+  Request the server to close the current terminal
+
+send
+  If terminal is close already, stop here
+  Send terminal data to the server
+
+The class also handles messages sent from the server:
+terminal created
+  Terminal is now open
+terminal data
+  Write the data to the terminal emulator
+terminal closed
+  Terminal is no longer open
+
+And a bunch more:
+terminal creation failure,
+terminal close failure,
+terminal write failure
+terminal read failure,
+unknown message received by server
+
+All messages (except terminal data) causes status updates.
+The updates are written to the terminal emulator, and a status event is emitted.
+
+In order to listen to these messages, the class uses a Connection.
+It listens to all the events on this class in order to
+change status, and the special data event in order to receive
+the messages related to this specific terminal.
+
+Other things:
+buffer
+  All received terminal data is kept so it is possible
+  to download this data elsewhere.
+
+destroy
+  Destroy the class by:
+    Deleting the buffer
+    Send close message to server
+    Remove all listeners on the class
+    Remove listeners on the connection
+    Destroy the terminal emulator instance
+
+name
+  The terminal may have a name set in the constructor.
+  If not set, the name will be set as the current
+  command used to open the terminal.
+ */
 var EventEmitter = require('events').EventEmitter;
 var termjs = require('term.js');
 var moment = require('moment');
@@ -65,6 +127,7 @@ export default class Terminal extends EventEmitter{
     }
     destroy(){
         this.destroyed = true;
+        this.buffer = '';
         this.close();
         super.removeAllListeners();
 

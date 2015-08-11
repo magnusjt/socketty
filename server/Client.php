@@ -1,4 +1,28 @@
 <?php
+/*
+ * When a user is connected, all websocket messages are handled in this class
+ *
+ * A client can send 3 types of messages (create terminal, write to terminal, close terminal)
+ *
+ * create terminal
+ *   Use authorized interface to check if the client is authorized for the requested terminal type
+ *   Check that the requested terminal id does not exist already
+ *   Create the requested terminal, and listen to data and exit events on the terminal
+ *     data
+ *       send data to the client
+ *     exit
+ *       close the terminal
+ *
+ * write to terminal
+ *   Find the correct terminal using the provided terminal id
+ *   Write the provded data to the terminal
+ *
+ * close terminal
+ *   Find the correct terminal using the provided terminal id
+ *   Detach the terminal from the Client
+ *   Run the close procedure on the terminal
+ *
+ */
 namespace Socketty;
 
 use Psr\Log\LoggerInterface;
