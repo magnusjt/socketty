@@ -69,26 +69,47 @@ var Sidebar = React.createClass({
     render(){
         return (
             <div className="socketty-sidebar-list">
-                {this.props.opts.map(function(opt){
-                    var i = 0;
-                    return (
-                        <ul key={opt.name}>
-                            <li>
-                                <h5>{opt.name}</h5>
-                                <ul>
-                                    {opt.list.map(function(item){
-                                        i++;
-                                        return <SidebarItem cmd={item.cmd} name={item.name} key={i} />
-                                    })}
-                                </ul>
-                            </li>
-                        </ul>
-                    );
+                {this.props.opts.map(function(opt, i){
+                    return <SidebarOptGroup opt={opt} key={i} />
                 })}
             </div>
         );
     }
 });
+var SidebarOptGroup = React.createClass({
+    getInitialState(){
+        return {
+            open: this.props.opt.open
+        }
+    },
+    onToggle(){
+        this.setState({
+           open: !this.state.open
+        });
+    },
+    render(){
+        var caretClass = "caret";
+        if(!this.state.open){
+            caretClass = "caret-right";
+        }
+
+        return (
+            <ul key={this.props.opt.name}>
+                <li>
+                    <h5 onClick={this.onToggle}>{this.props.opt.name} <span className={caretClass}></span></h5>
+                    {this.state.open &&
+                    <ul>
+                        {this.props.opt.list.map(function(item, i){
+                            return <SidebarItem cmd={item.cmd} name={item.name} key={i} />
+                        })}
+                    </ul>
+                    }
+                </li>
+            </ul>
+        );
+    }
+});
+
 var SidebarItem = React.createClass({
     onOpenNewTab(){
         Actions.addTerminal(this.props.cmd, this.props.name);

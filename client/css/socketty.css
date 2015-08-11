@@ -12,8 +12,11 @@
   border-bottom: 1px solid #eee;
   border-top: 1px solid #eee;
   margin: 0;
+  margin-bottom: -1px;
   padding: 5px;
   padding-left: 10px;
+  cursor: pointer;
+  color: #555;
 }
 .socketty-sidebar-list > ul > li > ul {
   margin-top: 5px;
@@ -22,12 +25,23 @@
 .socketty-sidebar-list > ul > li > ul > li {
   color: #337ab7;
   padding-left: 10px;
-  padding-top: 2px;
-  padding-bottom: 2px;
+  padding-top: 1px;
+  padding-bottom: 1px;
   cursor: pointer;
 }
 .socketty-sidebar-list > ul > li > ul > li:hover {
   background: #f5f5f5;
+}
+.caret-right {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-left: 2px;
+  vertical-align: middle;
+  border-left: 4px dashed;
+  border-left: 4px solid \9;
+  border-bottom: 4px solid transparent;
+  border-top: 4px solid transparent;
 }
 .socketty-form {
   padding-bottom: 10px;
