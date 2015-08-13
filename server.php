@@ -37,5 +37,18 @@ $memcached->addServer('localhost', 11211);
 $handler = new MemcachedSessionHandler($memcached);
 $sessionProvider = new SessionProvider($socketty, $handler, array('name' => 'CUSTOM_NAME'));
 
+declare(ticks = 1);
+$sig_handler = function($signal) use($socketty, $logger){
+    try{
+        $logger->critical('Server was killed. Stopping new connections and closing existing connections now...');
+        $socketty->allowNewConnections(false);
+        $socketty->closeAll();
+        $logger->critical('All connections now closed. Exiting...');
+    }finally{
+        exit;
+    }
+};
+pcntl_signal(SIGTERM, $sig_handler);
+
 $app->route('', $sessionProvider);
 $app->run();

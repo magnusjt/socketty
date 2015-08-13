@@ -50,6 +50,19 @@ class Socketty implements MessageComponentInterface{
         $this->clientFactory = $clientFactory;
         $this->authenticator = $authenticator;
         $this->clients = new \SplObjectStorage();
+        $this->allow = true;
+    }
+
+    /**
+     * Closes all clients
+     */
+    public function closeAll(){
+        /** @var Client $client */
+        foreach($this->clients as $client){
+            $client->close();
+        }
+
+        $this->clients->removeAll($this->clients);
     }
 
     public function getNumberOfClients(){
@@ -63,6 +76,15 @@ class Socketty implements MessageComponentInterface{
         }
 
         return $n;
+    }
+
+    /**
+     * Enable or disable new connections
+     *
+     * @param bool|true $allow
+     */
+    public function allowNewConnections($allow = true){
+        $this->allow = $allow;
     }
 
     public function logStatistics(){
@@ -86,6 +108,12 @@ class Socketty implements MessageComponentInterface{
 
     function onOpen(ConnectionInterface $conn){
         $this->logger->info('Connection established');
+
+        if(!$this->allow){
+            $this->logger->info('New connections not allowed. Closing the connection immediately');
+            $conn->close();
+            return;
+        }
 
         if($this->authenticator === null
            or $this->authenticator->check($conn->Session)
