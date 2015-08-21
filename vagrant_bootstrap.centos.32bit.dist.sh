@@ -5,7 +5,7 @@ cd ~
 ln -sf /usr/share/zoneinfo/Europe/Oslo /etc/localtime
 
 # Download updated yum repositories (epel and remi for php 5.5)
-wget http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
+wget http://dl.fedoraproject.org/pub/epel/6/i386/epel-release-6-8.noarch.rpm
 wget http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
 rpm -Uvh remi-release-6*.rpm epel-release-6*.rpm
 
@@ -52,7 +52,6 @@ echo "\$UDPServerAddress 127.0.0.1" >> /etc/rsyslog.conf
 echo "local2.* /var/log/haproxy.log" > /etc/rsyslog.d/haproxy.conf
 service rsyslog restart
 
-
 # Download and install haproxy
 wget http://www.haproxy.org/download/1.5/src/haproxy-1.5.12.tar.gz
 tar -zxvf haproxy-1.5.12.tar.gz
@@ -63,7 +62,14 @@ make TARGET=linux2628 USE_PCRE=1 USE_OPENSSL=1 USE_ZLIB=1 USE_CRYPT_H=1 USE_LIBC
 make install
 
 # Copy the haproxy config file and start it
-/usr/local/sbin/haproxy -f /vagrant/haproxy.cfg -p /var/run/haproxy.pid -D
+mkdir /etc/haproxy
+cp /vagrant/haproxy.cfg /etc/haproxy/haproxy.cfg
+cp /vagrant/haproxy.init /etc/init.d/haproxy
+
+service haproxy start
+
+# Manual start (not used):
+# /usr/local/sbin/haproxy -f /vagrant/haproxy.cfg -p /var/run/haproxy.pid -D
 
 # Install memcached
 yum -y install memcached

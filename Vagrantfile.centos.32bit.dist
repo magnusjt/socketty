@@ -6,6 +6,11 @@ VAGRANTFILE_API_VERSION = "2"
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "chef/centos-6.5-i386"
-  config.vm.provision :shell, path: "vagrant_bootstrap.sh"
+  config.vm.provision :shell, path: "vagrant_bootstrap.centos.32bit.dist.sh"
   config.vm.network "forwarded_port", guest: 443, host: 5678
+
+  config.vm.provider "virtualbox" do |v|
+      v.name = "socketty"
+      v.memory = 1024
+    end
 end
