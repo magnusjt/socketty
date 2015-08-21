@@ -49,6 +49,7 @@ var Socketty = React.createClass({
                         <Status type={this.state.authStatus.type} msg={this.state.authStatus.msg} />
                         <h4>Presets</h4>
                         <Sidebar opts={this.props.opts} />
+                        <br />
                     </div>
                     <div className="col-lg-10 socketty-main">
                         <Tabs terminals={this.state.terminals} selectedIndex={this.state.selectedIndex} />
@@ -223,6 +224,18 @@ var Terminal = React.createClass({
     onDownload(){
         saveData(this.props.terminal.buffer, moment().format('YYYYMMDD_HHmmss_') + 'copy.txt');
     },
+    onIncreaseVertical(){
+        this.props.terminal.term.resize(this.props.terminal.term.cols, this.props.terminal.term.rows + 10);
+    },
+    onDecreaseVertical(){
+        this.props.terminal.term.resize(this.props.terminal.term.cols, this.props.terminal.term.rows - 10);
+    },
+    onIncreaseHorizontal(){
+        this.props.terminal.term.resize(this.props.terminal.term.cols + 50, this.props.terminal.term.rows);
+    },
+    onDecreaseHorizontal(){
+        this.props.terminal.term.resize(this.props.terminal.term.cols - 50, this.props.terminal.term.rows);
+    },
     onPaste(){
         var pasteTextarea = React.findDOMNode(this.refs.pastearea);
         var text = pasteTextarea.value;
@@ -246,32 +259,46 @@ var Terminal = React.createClass({
 
         var display = {display: 'none'};
         if(this.props.show){
-            display = {display: 'block'};
+            display = {display: 'flex'};
         }
 
         return (
-            <div style={display}>
-                <div className="row">
-                    <div className="col-lg-7">
-                        <div ref="terminal"></div>
+            <div style={display} ref="terminalwrapper" className="socketty-term-wrapper">
+                <div className="socketty-term-area">
+                    <div ref="terminal"></div>
+                    <div className="btn-group">
+                        <button className="btn btn-default btn-sm" onClick={this.onDecreaseHorizontal} title="Increase horizontal size">
+                            <span className="glyphicon glyphicon-chevron-left"></span>
+                        </button>
+                        <button className="btn btn-default btn-sm" onClick={this.onIncreaseHorizontal} title="Decrease horizontal size">
+                            <span className="glyphicon glyphicon-chevron-right"></span>
+                        </button>
                     </div>
-                    <div className="col-lg-5">
-                        <Status type={this.props.terminal.status.type} msg={this.props.terminal.status.msg} />
-                        <div className="form-inline socketty-form">
-                            <input type="text" className="form-control input-sm" placeholder="Command (ex. ssh user@host)" defaultValue={this.props.terminal.defaultCmd} ref="cmd" />
-                            <button id="connect-button" className="btn btn-sm btn-default" onClick={this.onConnect}>
-                                <span className="glyphicon glyphicon-console"></span> Open
-                            </button>
-                        </div>
-                        <div className="form-group">
-                            <textarea className="form-control socketty-paste-textarea" ref="pastearea"></textarea>
-                            <button className="btn btn-default btn-sm" onClick={this.onPaste}>
-                                <span className="glyphicon glyphicon-paste"></span> Paste first line
-                            </button>
-                            <button className="btn btn-default btn-sm" onClick={this.onDownload}>
-                                <span className="glyphicon glyphicon-copy"></span> Download output
-                            </button>
-                        </div>
+                    <div className="btn-group">
+                        <button className="btn btn-default btn-sm" onClick={this.onDecreaseVertical} title="Increase vertical size">
+                            <span className="glyphicon glyphicon-chevron-up"></span>
+                        </button>
+                        <button className="btn btn-default btn-sm" onClick={this.onIncreaseVertical} title="Decrease vertical size">
+                            <span className="glyphicon glyphicon-chevron-down"></span>
+                        </button>
+                    </div>
+                </div>
+                <div className="socketty-term-opts-area">
+                    <Status type={this.props.terminal.status.type} msg={this.props.terminal.status.msg} />
+                    <div className="form-inline socketty-form">
+                        <input type="text" className="form-control input-sm" placeholder="Command (ex. ssh user@host)" defaultValue={this.props.terminal.defaultCmd} ref="cmd" />
+                        <button id="connect-button" className="btn btn-sm btn-default" onClick={this.onConnect}>
+                            <span className="glyphicon glyphicon-console"></span> Open
+                        </button>
+                    </div>
+                    <div className="form-group">
+                        <textarea className="form-control socketty-paste-textarea" ref="pastearea"></textarea>
+                        <button className="btn btn-default btn-sm" onClick={this.onPaste}>
+                            <span className="glyphicon glyphicon-paste"></span> Paste first line
+                        </button>
+                        <button className="btn btn-default btn-sm" onClick={this.onDownload}>
+                            <span className="glyphicon glyphicon-copy"></span> Download output
+                        </button>
                     </div>
                 </div>
             </div>

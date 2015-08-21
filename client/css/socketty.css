@@ -48,6 +48,7 @@
 }
 .socketty-paste-textarea {
   min-height: 300px;
+  width: 100%;
   font-size: small;
 }
 .socketty-circle {
@@ -104,6 +105,27 @@
 .socketty-tabs > li > .socketty-tab-remove {
   padding-left: 0;
 }
+/*
+Here we want almost the same behaviour as the bootstrap grid,
+but because of the terminal resize functionality we cannot have
+a fixed width on the term area.
+*/
+.socketty-term-wrapper {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  margin-left: -15px;
+  margin-right: -15px;
+}
+.socketty-term-area {
+  padding-left: 15px;
+  padding-right: 15px;
+}
+.socketty-term-opts-area {
+  padding-left: 15px;
+  padding-right: 15px;
+  flex-grow: 1;
+}
 .terminal {
   border: 5px #000 solid;
   font-family: "DejaVu Sans Mono", "Liberation Mono", monospace;
@@ -111,6 +133,7 @@
   color: #f0f0f0;
   background: #000;
   margin-bottom: 5px;
+  overflow: auto;
 }
 .terminal-cursor {
   color: #000;
