@@ -267,18 +267,18 @@ var Terminal = React.createClass({
                 <div className="socketty-term-area">
                     <div ref="terminal"></div>
                     <div className="btn-group">
-                        <button className="btn btn-default btn-sm" onClick={this.onDecreaseHorizontal} title="Increase horizontal size">
+                        <button className="btn btn-default btn-sm" onClick={this.onDecreaseHorizontal} title="Decrease horizontal size">
                             <span className="glyphicon glyphicon-chevron-left"></span>
                         </button>
-                        <button className="btn btn-default btn-sm" onClick={this.onIncreaseHorizontal} title="Decrease horizontal size">
+                        <button className="btn btn-default btn-sm" onClick={this.onIncreaseHorizontal} title="Increase horizontal size">
                             <span className="glyphicon glyphicon-chevron-right"></span>
                         </button>
                     </div>
                     <div className="btn-group">
-                        <button className="btn btn-default btn-sm" onClick={this.onDecreaseVertical} title="Increase vertical size">
+                        <button className="btn btn-default btn-sm" onClick={this.onDecreaseVertical} title="Decrease vertical size">
                             <span className="glyphicon glyphicon-chevron-up"></span>
                         </button>
-                        <button className="btn btn-default btn-sm" onClick={this.onIncreaseVertical} title="Decrease vertical size">
+                        <button className="btn btn-default btn-sm" onClick={this.onIncreaseVertical} title="Increase vertical size">
                             <span className="glyphicon glyphicon-chevron-down"></span>
                         </button>
                     </div>
