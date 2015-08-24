@@ -67,6 +67,7 @@ cp /vagrant/haproxy.cfg /etc/haproxy/haproxy.cfg
 cp /vagrant/haproxy.init /etc/init.d/haproxy
 
 service haproxy start
+chkconfig haproxy on
 
 # Manual start (not used):
 # /usr/local/sbin/haproxy -f /vagrant/haproxy.cfg -p /var/run/haproxy.pid -D
