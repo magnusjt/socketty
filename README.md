@@ -17,8 +17,13 @@ Uses the following tech:
 ### Usage
 
 The project consists of a PHP backend which manages the client connections, and a frontend which
-emulates the terminal. In order to run the backend server, create a composer dependency on this project
-(not available through packagist, use github as a composer repository), and follow the example layed out in ./server.php.
+emulates the terminal. In order to run the backend server, create a composer dependency on this project,
+and follow the example in `./server.php`:
+
+````
+composer require magnusjt/socketty
+````
+
 Here you can customize:
 
 * Authentication - Implement the AuthenticatorInterface. If you want to reuse sessions from an existing site,
